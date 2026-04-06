@@ -40,7 +40,7 @@ def base_url_to_ws_url(base_url: str) -> str:
 WS_URL = base_url_to_ws_url(BASE_URL)
 
 # CSV logging setup
-CSV_LOG_PATH = Path("trading_sessions_live/trades_log.csv")
+CSV_LOG_PATH = Path("csv_trading_logs/trades_log.csv")
 CSV_HEADERS = [
     "session_number", "session_date", "session_start_time", "session_end_time",
     "market_ticker", "starting_balance", "ending_balance", "session_pnl", "session_pnl_percent",
