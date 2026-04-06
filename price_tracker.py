@@ -224,91 +224,105 @@ async def track_crypto_prices(crypto_name: str, series_ticker: str, csv_path: Pa
                 print(f"[{crypto_name}] Connected to WebSocket for {market_ticker}")
                 
                 async for message in ws:
-                    data = json.loads(message)
+                    # Handle multiple JSON objects in one message
+                    try:
+                        # Try to parse as single JSON first
+                        data = json.loads(message)
+                        messages = [data]
+                    except json.JSONDecodeError:
+                        # If that fails, split by newlines and parse each
+                        messages = []
+                        for line in message.strip().split('\n'):
+                            if line.strip():
+                                try:
+                                    messages.append(json.loads(line))
+                                except:
+                                    pass
                     
-                    if data.get("type") == "ticker":
-                        msg_data = data.get("msg", {})
-                        yes_bid = msg_data.get("yes_bid")
-                        yes_ask = msg_data.get("yes_ask")
-                        
-                        yes_bid_f = safe_float(yes_bid)
-                        yes_ask_f = safe_float(yes_ask)
-                        
-                        # Calculate NO prices
-                        no_bid = (1.0 - yes_ask_f) if yes_ask_f is not None else None
-                        no_ask = (1.0 - yes_bid_f) if yes_bid_f is not None else None
-                        
-                        # Update latest prices
-                        latest_prices["yes_bid"] = yes_bid_f
-                        latest_prices["yes_ask"] = yes_ask_f
-                        latest_prices["no_bid"] = no_bid
-                        latest_prices["no_ask"] = no_ask
-                        
-                        # Check if we should log (every minute)
-                        now = datetime.now()
-                        current_minute = now.strftime("%Y-%m-%d %H:%M")
-                        
-                        if current_minute != last_log_minute:
-                            timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
-                            log_price_to_csv(
-                                csv_path,
-                                timestamp,
-                                market_ticker,
-                                latest_prices["yes_bid"],
-                                latest_prices["yes_ask"],
-                                latest_prices["no_bid"],
-                                latest_prices["no_ask"]
-                            )
-                            last_log_minute = current_minute
-                            print(f"[{crypto_name}] Logged prices at {timestamp}")
-                        
-                        # Check if market has closed
-                        if now >= current_close_time:
-                            print(f"[{crypto_name}] Market {market_ticker} has closed, checking outcome...")
+                    for data in messages:
+                        if data.get("type") == "ticker":
+                            msg_data = data.get("msg", {})
+                            yes_bid = msg_data.get("yes_bid")
+                            yes_ask = msg_data.get("yes_ask")
                             
-                            # Wait a bit for settlement
-                            await asyncio.sleep(5)
+                            yes_bid_f = safe_float(yes_bid)
+                            yes_ask_f = safe_float(yes_ask)
                             
-                            # Get final market result
-                            path = f"/trade-api/v2/markets/{market_ticker}"
-                            timestamp_ms = str(int(datetime.now().timestamp() * 1000))
-                            msg = timestamp_ms + "GET" + path
+                            # Calculate NO prices
+                            no_bid = (1.0 - yes_ask_f) if yes_ask_f is not None else None
+                            no_ask = (1.0 - yes_bid_f) if yes_bid_f is not None else None
                             
-                            signature = private_key.sign(
-                                msg.encode("utf-8"),
-                                padding.PSS(
-                                    mgf=padding.MGF1(hashes.SHA256()),
-                                    salt_length=padding.PSS.MAX_LENGTH
-                                ),
-                                hashes.SHA256()
-                            )
-                            sig_b64 = base64.b64encode(signature).decode("utf-8")
+                            # Update latest prices
+                            latest_prices["yes_bid"] = yes_bid_f
+                            latest_prices["yes_ask"] = yes_ask_f
+                            latest_prices["no_bid"] = no_bid
+                            latest_prices["no_ask"] = no_ask
                             
-                            headers["KALSHI-ACCESS-SIGNATURE"] = sig_b64
-                            headers["KALSHI-ACCESS-TIMESTAMP"] = timestamp_ms
+                            # Check if we should log (every minute)
+                            now = datetime.now()
+                            current_minute = now.strftime("%Y-%m-%d %H:%M")
                             
-                            response = requests.get(BASE_URL + path, headers=headers)
-                            final_market = response.json()
-                            result = final_market.get("market", {}).get("result")
+                            if current_minute != last_log_minute:
+                                timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
+                                log_price_to_csv(
+                                    csv_path,
+                                    timestamp,
+                                    market_ticker,
+                                    latest_prices["yes_bid"],
+                                    latest_prices["yes_ask"],
+                                    latest_prices["no_bid"],
+                                    latest_prices["no_ask"]
+                                )
+                                last_log_minute = current_minute
+                                print(f"[{crypto_name}] Logged prices at {timestamp}")
                             
-                            outcome = result.upper() if result else "UNKNOWN"
-                            print(f"[{crypto_name}] Market outcome: {outcome}")
-                            
-                            # Log final entry with outcome
-                            timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
-                            log_price_to_csv(
-                                csv_path,
-                                timestamp,
-                                market_ticker,
-                                latest_prices["yes_bid"],
-                                latest_prices["yes_ask"],
-                                latest_prices["no_bid"],
-                                latest_prices["no_ask"],
-                                outcome
-                            )
-                            
-                            # Break to find next market
-                            break
+                            # Check if market has closed
+                            if now >= current_close_time:
+                                print(f"[{crypto_name}] Market {market_ticker} has closed, checking outcome...")
+                                
+                                # Wait a bit for settlement
+                                await asyncio.sleep(5)
+                                
+                                # Get final market result
+                                path = f"/trade-api/v2/markets/{market_ticker}"
+                                timestamp_ms = str(int(datetime.now().timestamp() * 1000))
+                                msg = timestamp_ms + "GET" + path
+                                
+                                signature = private_key.sign(
+                                    msg.encode("utf-8"),
+                                    padding.PSS(
+                                        mgf=padding.MGF1(hashes.SHA256()),
+                                        salt_length=padding.PSS.MAX_LENGTH
+                                    ),
+                                    hashes.SHA256()
+                                )
+                                sig_b64 = base64.b64encode(signature).decode("utf-8")
+                                
+                                headers["KALSHI-ACCESS-SIGNATURE"] = sig_b64
+                                headers["KALSHI-ACCESS-TIMESTAMP"] = timestamp_ms
+                                
+                                response = requests.get(BASE_URL + path, headers=headers)
+                                final_market = response.json()
+                                result = final_market.get("market", {}).get("result")
+                                
+                                outcome = result.upper() if result else "UNKNOWN"
+                                print(f"[{crypto_name}] Market outcome: {outcome}")
+                                
+                                # Log final entry with outcome
+                                timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
+                                log_price_to_csv(
+                                    csv_path,
+                                    timestamp,
+                                    market_ticker,
+                                    latest_prices["yes_bid"],
+                                    latest_prices["yes_ask"],
+                                    latest_prices["no_bid"],
+                                    latest_prices["no_ask"],
+                                    outcome
+                                )
+                                
+                                # Break to find next market
+                                break
         
         except Exception as e:
             print(f"[{crypto_name}] ERROR: {e}")
