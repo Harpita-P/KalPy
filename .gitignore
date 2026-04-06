@@ -20,6 +20,9 @@ ENV/
 # trading_sessions_live/
 # trading_sessions/
 
+# Price tracking logs
+price_logs/
+
 # IDE
 .vscode/
 .idea/
