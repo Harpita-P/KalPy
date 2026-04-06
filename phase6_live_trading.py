@@ -656,17 +656,6 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
 
             no_bid = (1.0 - yes_ask_f) if yes_ask_f is not None else None
             no_ask = (1.0 - yes_bid_f) if yes_bid_f is not None else None
-            
-            # For Rule 1: Fetch current BTC price (expiration_value) every 10 updates
-            # This is the actual BTC price that will be used for settlement
-            current_btc_price = None
-            if update_count % 10 == 0 and target_boundary_price is not None:
-                try:
-                    market_data = client.get_market(market_ticker)
-                    market_info = market_data.get("market", {})
-                    current_btc_price = safe_float(market_info.get("expiration_value"))
-                except Exception as e:
-                    pass  # Silently fail, will try again on next interval
 
             current_time = datetime.now(close_time.tzinfo)
             market_closed = current_time >= close_time
@@ -903,25 +892,34 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                 rule1_triggered = False
                 if (current_price is not None and 
                     current_price >= RULE1_EMERGENCY_EXIT_THRESHOLD and
-                    current_btc_price is not None and 
                     target_boundary_price is not None):
                     
-                    # Calculate price difference between current BTC and target boundary
-                    if position.side == "yes":
-                        # For YES position: BTC should be well above boundary
-                        price_diff = current_btc_price - target_boundary_price
-                    else:
-                        # For NO position: BTC should be well below boundary
-                        price_diff = target_boundary_price - current_btc_price
+                    # Fetch current BTC price (expiration_value) only when position >= 99%
+                    current_btc_price = None
+                    try:
+                        market_data = client.get_market(market_ticker)
+                        market_info = market_data.get("market", {})
+                        current_btc_price = safe_float(market_info.get("expiration_value"))
+                    except Exception as e:
+                        print(f"[{now}] Warning: Could not fetch expiration_value for Rule 1: {e}")
                     
-                    # If difference is less than minimum buffer, trigger emergency exit
-                    if price_diff < RULE1_MIN_PRICE_BUFFER:
-                        rule1_triggered = True
-                        print(f"\n[{now}] ⚠️  RULE 1 TRIGGERED - EMERGENCY EXIT ⚠️")
-                        print(f"Position at {fmt_cents(current_price)} (99%+) but BTC price too close to boundary!")
-                        print(f"Current BTC: ${current_btc_price:.2f} | Target: ${target_boundary_price} | Diff: ${price_diff:.2f}")
-                        print(f"Risk: Outcome could flip last minute causing 100% loss")
-                        print(f"Action: Selling immediately at {fmt_cents(current_price)}")
+                    if current_btc_price is not None:
+                        # Calculate price difference between current BTC and target boundary
+                        if position.side == "yes":
+                            # For YES position: BTC should be well above boundary
+                            price_diff = current_btc_price - target_boundary_price
+                        else:
+                            # For NO position: BTC should be well below boundary
+                            price_diff = target_boundary_price - current_btc_price
+                        
+                        # If difference is less than minimum buffer, trigger emergency exit
+                        if price_diff < RULE1_MIN_PRICE_BUFFER:
+                            rule1_triggered = True
+                            print(f"\n[{now}] ⚠️  RULE 1 TRIGGERED - EMERGENCY EXIT ⚠️")
+                            print(f"Position at {fmt_cents(current_price)} (99%+) but BTC price too close to boundary!")
+                            print(f"Current BTC: ${current_btc_price:.2f} | Target: ${target_boundary_price:.2f} | Diff: ${price_diff:.2f}")
+                            print(f"Risk: Outcome could flip last minute causing 100% loss")
+                            print(f"Action: Selling immediately at {fmt_cents(current_price)}")
                 
                 # Rule 1 emergency exit
                 if rule1_triggered:
