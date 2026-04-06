@@ -1,14 +1,20 @@
 import asyncio
+import base64
 import csv
 import json
 import os
+import time
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
 
+import requests
 import websockets
-from dotenv import load_dotenv
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import padding
 from dateutil import parser as dateutil_parser
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -27,6 +33,77 @@ def base_url_to_ws_url(base_url: str) -> str:
 
 
 WS_URL = base_url_to_ws_url(BASE_URL)
+
+
+class KalshiClient:
+    def __init__(self, api_key_id: str, private_key_path: str, base_url: str):
+        self.api_key_id = api_key_id
+        self.private_key_path = private_key_path
+        self.base_url = base_url.rstrip("/")
+        self.private_key = self._load_private_key()
+
+    def _load_private_key(self):
+        with open(self.private_key_path, "rb") as f:
+            return serialization.load_pem_private_key(
+                f.read(),
+                password=None,
+                backend=default_backend(),
+            )
+
+    def _timestamp_ms(self) -> str:
+        return str(int(time.time() * 1000))
+
+    def _create_signature(self, timestamp: str, method: str, sign_path: str) -> str:
+        path_without_query = sign_path.split("?")[0]
+        message = f"{timestamp}{method.upper()}{path_without_query}".encode("utf-8")
+        signature = self.private_key.sign(
+            message,
+            padding.PSS(
+                mgf=padding.MGF1(hashes.SHA256()),
+                salt_length=padding.PSS.DIGEST_LENGTH,
+            ),
+            hashes.SHA256(),
+        )
+        return base64.b64encode(signature).decode("utf-8")
+
+    def _auth_headers(self, method: str, endpoint_path: str) -> dict:
+        timestamp = self._timestamp_ms()
+        sign_path = urlparse(self.base_url + endpoint_path).path
+        signature = self._create_signature(timestamp, method, sign_path)
+        return {
+            "KALSHI-ACCESS-KEY": self.api_key_id,
+            "KALSHI-ACCESS-SIGNATURE": signature,
+            "KALSHI-ACCESS-TIMESTAMP": timestamp,
+            "Content-Type": "application/json",
+        }
+
+    def ws_auth_headers(self):
+        timestamp = self._timestamp_ms()
+        ws_path = "/trade-api/ws/v2"
+        signature = self._create_signature(timestamp, "GET", ws_path)
+        return [
+            ("KALSHI-ACCESS-KEY", self.api_key_id),
+            ("KALSHI-ACCESS-SIGNATURE", signature),
+            ("KALSHI-ACCESS-TIMESTAMP", timestamp),
+        ]
+
+    def get_events(self, series_ticker: str):
+        path = f"/trade-api/v2/events?series_ticker={series_ticker}&status=open&limit=10"
+        headers = self._auth_headers("GET", path)
+        response = requests.get(self.base_url + path, headers=headers, timeout=30)
+        return response.json()
+
+    def get_event(self, event_ticker: str):
+        path = f"/trade-api/v2/events/{event_ticker}"
+        headers = self._auth_headers("GET", path)
+        response = requests.get(self.base_url + path, headers=headers, timeout=30)
+        return response.json()
+
+    def get_market(self, market_ticker: str):
+        path = f"/trade-api/v2/markets/{market_ticker}"
+        headers = self._auth_headers("GET", path)
+        response = requests.get(self.base_url + path, headers=headers, timeout=30)
+        return response.json()
 
 # Price tracking configuration
 CRYPTO_CONFIGS = {
@@ -100,7 +177,7 @@ def safe_float(val):
         return None
 
 
-async def track_crypto_prices(crypto_name: str, series_ticker: str, csv_path: Path):
+async def track_crypto_prices(client: KalshiClient, crypto_name: str, series_ticker: str, csv_path: Path):
     """Track prices for a single cryptocurrency"""
     print(f"\n[{crypto_name}] Starting price tracker for {series_ticker}")
     
@@ -116,43 +193,8 @@ async def track_crypto_prices(crypto_name: str, series_ticker: str, csv_path: Pa
     
     while True:
         try:
-            # Find the latest active market
-            import requests
-            from cryptography.hazmat.backends import default_backend
-            from cryptography.hazmat.primitives import hashes, serialization
-            from cryptography.hazmat.primitives.asymmetric import padding
-            import base64
-            
-            # Simple API client for getting markets
-            with open(PRIVATE_KEY_PATH, "rb") as f:
-                private_key = serialization.load_pem_private_key(
-                    f.read(), password=None, backend=default_backend()
-                )
-            
             # Get events for this series
-            path = f"/trade-api/v2/events?series_ticker={series_ticker}&status=open&limit=10"
-            timestamp_ms = str(int(datetime.now().timestamp() * 1000))
-            msg = timestamp_ms + "GET" + path
-            
-            signature = private_key.sign(
-                msg.encode("utf-8"),
-                padding.PSS(
-                    mgf=padding.MGF1(hashes.SHA256()),
-                    salt_length=padding.PSS.MAX_LENGTH
-                ),
-                hashes.SHA256()
-            )
-            sig_b64 = base64.b64encode(signature).decode("utf-8")
-            
-            headers = {
-                "Content-Type": "application/json",
-                "KALSHI-ACCESS-KEY": API_KEY_ID,
-                "KALSHI-ACCESS-SIGNATURE": sig_b64,
-                "KALSHI-ACCESS-TIMESTAMP": timestamp_ms
-            }
-            
-            response = requests.get(BASE_URL + path, headers=headers)
-            events_data = response.json()
+            events_data = client.get_events(series_ticker)
             events = events_data.get("events", [])
             
             if not events:
@@ -165,25 +207,7 @@ async def track_crypto_prices(crypto_name: str, series_ticker: str, csv_path: Pa
             event_ticker = latest_event.get("event_ticker")
             
             # Get markets for this event
-            path = f"/trade-api/v2/events/{event_ticker}"
-            timestamp_ms = str(int(datetime.now().timestamp() * 1000))
-            msg = timestamp_ms + "GET" + path
-            
-            signature = private_key.sign(
-                msg.encode("utf-8"),
-                padding.PSS(
-                    mgf=padding.MGF1(hashes.SHA256()),
-                    salt_length=padding.PSS.MAX_LENGTH
-                ),
-                hashes.SHA256()
-            )
-            sig_b64 = base64.b64encode(signature).decode("utf-8")
-            
-            headers["KALSHI-ACCESS-SIGNATURE"] = sig_b64
-            headers["KALSHI-ACCESS-TIMESTAMP"] = timestamp_ms
-            
-            response = requests.get(BASE_URL + path, headers=headers)
-            event_data = response.json()
+            event_data = client.get_event(event_ticker)
             markets = event_data.get("event", {}).get("markets", []) or event_data.get("markets", [])
             
             # Find active market
@@ -209,7 +233,8 @@ async def track_crypto_prices(crypto_name: str, series_ticker: str, csv_path: Pa
                 print(f"[{crypto_name}] Tracking new market: {market_ticker} (closes at {close_time_str})")
             
             # Connect to WebSocket
-            async with websockets.connect(WS_URL, extra_headers=headers) as ws:
+            ws_headers = client.ws_auth_headers()
+            async with websockets.connect(WS_URL, extra_headers=ws_headers) as ws:
                 # Subscribe to ticker
                 subscribe_msg = {
                     "id": 1,
@@ -284,25 +309,7 @@ async def track_crypto_prices(crypto_name: str, series_ticker: str, csv_path: Pa
                                 await asyncio.sleep(5)
                                 
                                 # Get final market result
-                                path = f"/trade-api/v2/markets/{market_ticker}"
-                                timestamp_ms = str(int(datetime.now().timestamp() * 1000))
-                                msg = timestamp_ms + "GET" + path
-                                
-                                signature = private_key.sign(
-                                    msg.encode("utf-8"),
-                                    padding.PSS(
-                                        mgf=padding.MGF1(hashes.SHA256()),
-                                        salt_length=padding.PSS.MAX_LENGTH
-                                    ),
-                                    hashes.SHA256()
-                                )
-                                sig_b64 = base64.b64encode(signature).decode("utf-8")
-                                
-                                headers["KALSHI-ACCESS-SIGNATURE"] = sig_b64
-                                headers["KALSHI-ACCESS-TIMESTAMP"] = timestamp_ms
-                                
-                                response = requests.get(BASE_URL + path, headers=headers)
-                                final_market = response.json()
+                                final_market = client.get_market(market_ticker)
                                 result = final_market.get("market", {}).get("result")
                                 
                                 outcome = result.upper() if result else "UNKNOWN"
@@ -337,9 +344,12 @@ async def main():
     print("Press Ctrl+C to stop")
     print("=" * 80)
     
+    # Initialize Kalshi client
+    client = KalshiClient(API_KEY_ID, PRIVATE_KEY_PATH, BASE_URL)
+    
     # Create tasks for each cryptocurrency
     tasks = [
-        track_crypto_prices(name, config["series"], config["csv_path"])
+        track_crypto_prices(client, name, config["series"], config["csv_path"])
         for name, config in CRYPTO_CONFIGS.items()
     ]
     
