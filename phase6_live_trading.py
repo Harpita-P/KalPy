@@ -27,7 +27,7 @@ if not API_KEY_ID or not PRIVATE_KEY_PATH or not BASE_URL:
 
 # Trading parameters - SAFETY FIRST: 2% position sizing
 ENTRY_TRIGGER = 0.74  # Enter when ask >= 74 cents
-EXIT_TRIGGER = 0.69   # Exit when price falls to <= 69 cents
+STOP_LOSS_PCT = 0.06  # Exit when price falls 6% below entry price (dynamic stop loss)
 POSITION_SIZE_PCT = 0.40  # Use 40% of account balance
 
 # LOSS PREVENTION RULES
@@ -590,7 +590,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
     print(f"Initial Balance: {fmt_dollars(initial_balance)}")
     print(f"Position Size: {POSITION_SIZE_PCT * 100:.1f}% of balance (SAFETY MODE)")
     print(f"Entry Rule: First side whose ASK reaches >= {fmt_cents(ENTRY_TRIGGER)}")
-    print(f"Exit Rule: When price falls to <= {fmt_cents(EXIT_TRIGGER)}")
+    print(f"Exit Rule: Dynamic stop loss at {STOP_LOSS_PCT * 100:.0f}% below entry price")
     print("Press Ctrl+C to stop")
     print("=" * 80 + "\n")
 
@@ -974,28 +974,31 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                     except Exception as e:
                         print(f"[{now}] ERROR placing emergency exit order: {e}")
                 
-                # Exit when price drops below EXIT_TRIGGER (loss scenario)
+                # Exit when price drops below dynamic stop loss (loss scenario)
+                # Dynamic stop loss = entry_price - (entry_price * STOP_LOSS_PCT)
                 # This means: bought at higher price, now trading at lower price
-                elif current_price is not None and current_price <= EXIT_TRIGGER and current_price < position.entry_price:
-                    price_cents = int(current_price * 100)
-                    
-                    try:
-                        print(f"\n[{now}] PLACING SELL ORDER: {position.side.upper()} @ {fmt_cents(current_price)} x {position.quantity}")
-                        order_response = client.create_order(
-                            ticker=market_ticker,
-                            side=position.side,
-                            action="sell",
-                            count=position.quantity,
-                            yes_price=price_cents if position.side == "yes" else None,
-                            no_price=price_cents if position.side == "no" else None
-                        )
-                        order = order_response.get("order", {})
-                        exit_order_id = order.get("order_id")
-                        pending_exit_order_id = exit_order_id
-                        print(f"Exit order placed: {exit_order_id}")
-                            
-                    except Exception as e:
-                        print(f"[{now}] ERROR placing exit order: {e}")
+                else:
+                    stop_loss_price = position.entry_price * (1 - STOP_LOSS_PCT)
+                    if current_price is not None and current_price <= stop_loss_price and current_price < position.entry_price:
+                        price_cents = int(current_price * 100)
+                        
+                        try:
+                            print(f"\n[{now}] STOP LOSS TRIGGERED: Entry @ {fmt_cents(position.entry_price)} | Stop @ {fmt_cents(stop_loss_price)} | Current @ {fmt_cents(current_price)}")
+                            print(f"[{now}] PLACING SELL ORDER: {position.side.upper()} @ {fmt_cents(current_price)} x {position.quantity}")
+                            order_response = client.create_order(
+                                ticker=market_ticker,
+                                side=position.side,
+                                action="sell",
+                                count=position.quantity,
+                                yes_price=price_cents if position.side == "yes" else None,
+                                no_price=price_cents if position.side == "no" else None
+                            )
+                            order = order_response.get("order", {})
+                            exit_order_id = order.get("order_id")
+                            pending_exit_order_id = exit_order_id
+                            print(f"Sell order placed: {exit_order_id}")
+                        except Exception as e:
+                            print(f"[{now}] ERROR placing sell order: {e}")
             
             # Check if pending exit order has filled
             if pending_exit_order_id and position is not None:
