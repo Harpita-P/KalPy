@@ -597,6 +597,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
     pending_entry_order_id = None
     pending_entry_side = None
     pending_exit_order_id = None
+    rule1_exit_triggered = False  # Flag to prevent re-entry after Rule 1 emergency exit
     
     # Fetch market data to get floor_strike (target boundary price) for Rule 1
     target_boundary_price = None
@@ -814,7 +815,8 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                     print(f"Pending order: {pending_entry_order_id}")
 
             # ENTRY LOGIC: No position and no pending order
-            if position is None and pending_entry_order_id is None:
+            # Skip entry if Rule 1 emergency exit was triggered (don't re-enter after emergency exit)
+            if position is None and pending_entry_order_id is None and not rule1_exit_triggered:
                 if yes_ask_f is not None and yes_ask_f >= ENTRY_TRIGGER:
                     position_value_dollars = current_balance * POSITION_SIZE_PCT
                     quantity = max(1, int(position_value_dollars / yes_ask_f))
@@ -938,7 +940,9 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                         order = order_response.get("order", {})
                         exit_order_id = order.get("order_id")
                         pending_exit_order_id = exit_order_id
+                        rule1_exit_triggered = True  # Set flag to prevent re-entry
                         print(f"Emergency exit order placed: {exit_order_id}")
+                        print(f"[Rule 1] Re-entry disabled for this session")
                             
                     except Exception as e:
                         print(f"[{now}] ERROR placing emergency exit order: {e}")
