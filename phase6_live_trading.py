@@ -26,8 +26,8 @@ if not API_KEY_ID or not PRIVATE_KEY_PATH or not BASE_URL:
     raise ValueError("Missing environment variables. Check your .env file.")
 
 # Trading parameters - SAFETY FIRST: 2% position sizing
-ENTRY_TRIGGER = 0.91  # Enter when ask >= 91 cents
-EXIT_TRIGGER = 0.80   # Exit when price falls to <= 82 cents
+ENTRY_TRIGGER = 0.74  # Enter when ask >= 74 cents
+EXIT_TRIGGER = 0.69   # Exit when price falls to <= 69 cents
 POSITION_SIZE_PCT = 0.40  # Use 40% of account balance
 
 # LOSS PREVENTION RULES
