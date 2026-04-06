@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import csv
 import json
 import os
 import time
@@ -37,6 +38,82 @@ def base_url_to_ws_url(base_url: str) -> str:
 
 
 WS_URL = base_url_to_ws_url(BASE_URL)
+
+# CSV logging setup
+CSV_LOG_PATH = Path("trading_sessions_live/trades_log.csv")
+CSV_HEADERS = [
+    "session_number", "session_date", "session_start_time", "session_end_time",
+    "market_ticker", "starting_balance", "ending_balance", "session_pnl", "session_pnl_percent",
+    "trade_number", "side", "buy_time", "buy_price", "buy_quantity", "buy_cost", "buy_order_id",
+    "sold", "sell_time", "sell_price", "sell_quantity", "sell_proceeds", "sell_order_id",
+    "exit_type", "trade_pnl", "trade_pnl_percent", "hold_duration_seconds", "outcome"
+]
+
+
+def ensure_csv_exists():
+    """Create CSV file with headers if it doesn't exist"""
+    CSV_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    if not CSV_LOG_PATH.exists():
+        with open(CSV_LOG_PATH, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(CSV_HEADERS)
+
+
+def log_trade_to_csv(session_info: dict, trade_info: dict):
+    """Log a single trade to CSV"""
+    ensure_csv_exists()
+    
+    # Calculate hold duration
+    hold_duration = None
+    if trade_info.get("buy_time") and trade_info.get("sell_time"):
+        try:
+            buy_dt = datetime.strptime(trade_info["buy_time"], "%Y-%m-%d %H:%M:%S")
+            sell_dt = datetime.strptime(trade_info["sell_time"], "%Y-%m-%d %H:%M:%S")
+            hold_duration = int((sell_dt - buy_dt).total_seconds())
+        except:
+            hold_duration = None
+    
+    # Determine outcome
+    outcome = "OPEN"
+    if trade_info.get("sold"):
+        outcome = "WIN" if trade_info.get("trade_pnl", 0) >= 0 else "LOSS"
+    
+    # Extract session date from start time
+    session_date = session_info["session_start_time"].split()[0] if session_info.get("session_start_time") else ""
+    
+    row = [
+        session_info.get("session_number", ""),
+        session_date,
+        session_info.get("session_start_time", ""),
+        session_info.get("session_end_time", ""),
+        session_info.get("market_ticker", ""),
+        session_info.get("starting_balance", ""),
+        session_info.get("ending_balance", ""),
+        session_info.get("session_pnl", ""),
+        session_info.get("session_pnl_percent", ""),
+        trade_info.get("trade_number", ""),
+        trade_info.get("side", "").upper(),
+        trade_info.get("buy_time", ""),
+        trade_info.get("buy_price", ""),
+        trade_info.get("buy_quantity", ""),
+        trade_info.get("buy_cost", ""),
+        trade_info.get("buy_order_id", ""),
+        trade_info.get("sold", False),
+        trade_info.get("sell_time", ""),
+        trade_info.get("sell_price", ""),
+        trade_info.get("sell_quantity", ""),
+        trade_info.get("sell_proceeds", ""),
+        trade_info.get("sell_order_id", ""),
+        trade_info.get("exit_type", ""),
+        trade_info.get("trade_pnl", ""),
+        trade_info.get("trade_pnl_percent", ""),
+        hold_duration if hold_duration is not None else "",
+        outcome
+    ]
+    
+    with open(CSV_LOG_PATH, 'a', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(row)
 
 
 class KalshiClient:
@@ -608,6 +685,39 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                         outcome = f"Held {position.side.upper()} to close - WON"
                     else:
                         outcome = f"Held {position.side.upper()} to close - LOST"
+                    
+                    # Log to CSV
+                    trade_pnl_pct = (position.pnl / (position.entry_price * position.quantity)) * 100 if position.quantity > 0 else 0
+                    log_trade_to_csv(
+                        session_info={
+                            "session_number": session_count,
+                            "session_start_time": session_start_time,
+                            "session_end_time": now,
+                            "market_ticker": market_ticker,
+                            "starting_balance": session_start_balance,
+                            "ending_balance": current_balance,
+                            "session_pnl": current_balance - session_start_balance,
+                            "session_pnl_percent": ((current_balance - session_start_balance) / session_start_balance) * 100
+                        },
+                        trade_info={
+                            "trade_number": len(trades_log),
+                            "side": position.side,
+                            "buy_time": position.entry_time,
+                            "buy_price": position.entry_price,
+                            "buy_quantity": position.quantity,
+                            "buy_cost": position.entry_price * position.quantity,
+                            "buy_order_id": position.entry_order_id,
+                            "sold": True,
+                            "sell_time": position.exit_time,
+                            "sell_price": position.exit_price,
+                            "sell_quantity": position.quantity,
+                            "sell_proceeds": proceeds,
+                            "sell_order_id": position.exit_order_id if position.exit_order_id else None,
+                            "exit_type": "SETTLEMENT",
+                            "trade_pnl": position.pnl,
+                            "trade_pnl_percent": trade_pnl_pct
+                        }
+                    )
                 else:
                     outcome = "No position at close"
                 
@@ -814,6 +924,39 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                             outcome = f"Exited {position.side.upper()} at stop - Small profit"
                         else:
                             outcome = f"Exited {position.side.upper()} at stop - Loss"
+                        
+                        # Log to CSV
+                        trade_pnl_pct = (position.pnl / (position.entry_price * position.quantity)) * 100 if position.quantity > 0 else 0
+                        log_trade_to_csv(
+                            session_info={
+                                "session_number": session_count,
+                                "session_start_time": session_start_time,
+                                "session_end_time": now,
+                                "market_ticker": market_ticker,
+                                "starting_balance": session_start_balance,
+                                "ending_balance": current_balance,
+                                "session_pnl": current_balance - session_start_balance,
+                                "session_pnl_percent": ((current_balance - session_start_balance) / session_start_balance) * 100
+                            },
+                            trade_info={
+                                "trade_number": len(trades_log),
+                                "side": position.side,
+                                "buy_time": position.entry_time,
+                                "buy_price": position.entry_price,
+                                "buy_quantity": position.quantity,
+                                "buy_cost": position.entry_price * position.quantity,
+                                "buy_order_id": position.entry_order_id,
+                                "sold": True,
+                                "sell_time": position.exit_time,
+                                "sell_price": position.exit_price,
+                                "sell_quantity": position.quantity,
+                                "sell_proceeds": proceeds,
+                                "sell_order_id": position.exit_order_id,
+                                "exit_type": "MANUAL_STOP_LOSS",
+                                "trade_pnl": position.pnl,
+                                "trade_pnl_percent": trade_pnl_pct
+                            }
+                        )
                         
                         position = None
                         pending_exit_order_id = None
