@@ -28,7 +28,7 @@ if not API_KEY_ID or not PRIVATE_KEY_PATH or not BASE_URL:
 # Trading parameters - SAFETY FIRST: 2% position sizing
 ENTRY_TRIGGER = 0.91  # Enter when ask >= 91 cents
 EXIT_TRIGGER = 0.82   # Exit when price falls to <= 82 cents
-POSITION_SIZE_PCT = 0.50  # Use 50% of account balance
+POSITION_SIZE_PCT = 0.40  # Use 40% of account balance
 
 
 def base_url_to_ws_url(base_url: str) -> str:
