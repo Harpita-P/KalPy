@@ -245,7 +245,7 @@ async def track_crypto_prices(client: KalshiClient, crypto_name: str, series_tic
             
             # Connect to WebSocket
             ws_headers = client.ws_auth_headers()
-            async with websockets.connect(WS_URL, extra_headers=ws_headers) as ws:
+            async with websockets.connect(WS_URL, additional_headers=ws_headers) as ws:
                 # Subscribe to ticker
                 subscribe_msg = {
                     "id": 1,
