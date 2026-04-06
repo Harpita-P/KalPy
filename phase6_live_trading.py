@@ -53,7 +53,8 @@ CSV_HEADERS = [
     "market_ticker", "starting_balance", "ending_balance", "session_pnl", "session_pnl_percent",
     "trade_number", "side", "buy_time", "buy_price", "buy_quantity", "buy_cost", "buy_order_id",
     "sold", "sell_time", "sell_price", "sell_quantity", "sell_proceeds", "sell_order_id",
-    "exit_type", "trade_pnl", "trade_pnl_percent", "hold_duration_seconds", "outcome"
+    "exit_type", "trade_pnl", "trade_pnl_percent", "hold_duration_seconds", "outcome",
+    "emergency_exit", "emergency_exit_price", "boundary_difference"
 ]
 
 
@@ -116,7 +117,10 @@ def log_trade_to_csv(session_info: dict, trade_info: dict):
             trade_info.get("trade_pnl", ""),
             trade_info.get("trade_pnl_percent", ""),
             hold_duration if hold_duration is not None else "",
-            outcome
+            outcome,
+            trade_info.get("emergency_exit", False),
+            trade_info.get("emergency_exit_price", ""),
+            trade_info.get("boundary_difference", "")
         ]
         
         with open(CSV_LOG_PATH, 'a', newline='') as f:
@@ -598,6 +602,8 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
     pending_entry_side = None
     pending_exit_order_id = None
     rule1_exit_triggered = False  # Flag to prevent re-entry after Rule 1 emergency exit
+    rule1_exit_price = None  # Store exit price when Rule 1 triggers
+    rule1_boundary_diff = None  # Store boundary difference when Rule 1 triggers
     
     # Fetch market data to get floor_strike (target boundary price) for Rule 1
     target_boundary_price = None
@@ -743,7 +749,10 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                             "sell_order_id": position.exit_order_id if position.exit_order_id else None,
                             "exit_type": "SETTLEMENT",
                             "trade_pnl": position.pnl,
-                            "trade_pnl_percent": trade_pnl_pct
+                            "trade_pnl_percent": trade_pnl_pct,
+                            "emergency_exit": False,
+                            "emergency_exit_price": "",
+                            "boundary_difference": ""
                         }
                     )
                 else:
@@ -917,6 +926,9 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                         # If difference is less than minimum buffer, trigger emergency exit
                         if price_diff < RULE1_MIN_PRICE_BUFFER:
                             rule1_triggered = True
+                            # Store emergency exit details for CSV logging
+                            rule1_exit_price = current_price
+                            rule1_boundary_diff = price_diff
                             print(f"\n[{now}] ⚠️  RULE 1 TRIGGERED - EMERGENCY EXIT ⚠️")
                             print(f"Position at {fmt_cents(current_price)} (99%+) but BTC price too close to boundary!")
                             print(f"Current BTC: ${current_btc_price:.2f} | Target: ${target_boundary_price:.2f} | Diff: ${price_diff:.2f}")
@@ -1015,6 +1027,10 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                         trade_cost = position.entry_price * position.quantity
                         trade_pnl_pct = (position.pnl / trade_cost) * 100 if trade_cost > 0 else 0
                         session_pnl_pct = ((current_balance - session_start_balance) / session_start_balance) * 100 if session_start_balance > 0 else 0
+                        
+                        # Check if this was a Rule 1 emergency exit
+                        is_emergency_exit = rule1_exit_price is not None
+                        
                         log_trade_to_csv(
                             session_info={
                                 "session_number": session_number,
@@ -1040,9 +1056,12 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                                 "sell_quantity": position.quantity,
                                 "sell_proceeds": proceeds,
                                 "sell_order_id": position.exit_order_id,
-                                "exit_type": "MANUAL_STOP_LOSS",
+                                "exit_type": "RULE1_EMERGENCY_EXIT" if is_emergency_exit else "MANUAL_STOP_LOSS",
                                 "trade_pnl": position.pnl,
-                                "trade_pnl_percent": trade_pnl_pct
+                                "trade_pnl_percent": trade_pnl_pct,
+                                "emergency_exit": is_emergency_exit,
+                                "emergency_exit_price": rule1_exit_price if is_emergency_exit else "",
+                                "boundary_difference": rule1_boundary_diff if is_emergency_exit else ""
                             }
                         )
                         
