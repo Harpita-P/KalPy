@@ -54,7 +54,8 @@ CSV_HEADERS = [
     "trade_number", "side", "buy_time", "buy_price", "buy_quantity", "buy_cost", "buy_order_id",
     "sold", "sell_time", "sell_price", "sell_quantity", "sell_proceeds", "sell_order_id",
     "exit_type", "trade_pnl", "trade_pnl_percent", "hold_duration_seconds", "outcome",
-    "emergency_exit", "emergency_exit_time", "emergency_exit_price", "boundary_difference"
+    "emergency_exit", "emergency_exit_time", "emergency_exit_price", "boundary_difference",
+    "market_outcome"
 ]
 
 
@@ -121,7 +122,8 @@ def log_trade_to_csv(session_info: dict, trade_info: dict):
             trade_info.get("emergency_exit", False),
             trade_info.get("emergency_exit_time", ""),
             trade_info.get("emergency_exit_price", ""),
-            trade_info.get("boundary_difference", "")
+            trade_info.get("boundary_difference", ""),
+            trade_info.get("market_outcome", "")
         ]
         
         with open(CSV_LOG_PATH, 'a', newline='') as f:
@@ -755,7 +757,8 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                             "emergency_exit": False,
                             "emergency_exit_time": "",
                             "emergency_exit_price": "",
-                            "boundary_difference": ""
+                            "boundary_difference": "",
+                            "market_outcome": winner
                         }
                     )
                 else:
@@ -1074,7 +1077,8 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                                 "emergency_exit": is_emergency_exit,
                                 "emergency_exit_time": rule1_exit_time if is_emergency_exit else "",
                                 "emergency_exit_price": rule1_exit_price if is_emergency_exit else "",
-                                "boundary_difference": rule1_boundary_diff if is_emergency_exit else ""
+                                "boundary_difference": rule1_boundary_diff if is_emergency_exit else "",
+                                "market_outcome": ""  # Market hasn't settled yet for manual exits
                             }
                         )
                         
