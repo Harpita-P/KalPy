@@ -1,0 +1,28 @@
+# Environment variables (contains secrets)
+.env
+
+# Private keys
+*.txt
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+
+# Trading session logs (optional - uncomment if you don't want to track these)
+# trading_sessions_live/
+# trading_sessions/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
