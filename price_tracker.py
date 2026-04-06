@@ -312,8 +312,9 @@ async def track_crypto_prices(client: KalshiClient, crypto_name: str, series_tic
                                 last_log_minute = current_minute
                                 print(f"[{crypto_name}] Logged prices at {timestamp}")
                             
-                            # Check if market has closed
-                            if now >= current_close_time:
+                            # Check if market has closed (compare timezone-aware datetimes)
+                            now_aware = now.replace(tzinfo=current_close_time.tzinfo) if now.tzinfo is None else now
+                            if now_aware >= current_close_time:
                                 print(f"[{crypto_name}] Market {market_ticker} has closed, checking outcome...")
                                 
                                 # Wait a bit for settlement
