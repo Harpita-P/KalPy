@@ -88,21 +88,21 @@ class KalshiClient:
         ]
 
     def get_events(self, series_ticker: str):
-        path = f"/trade-api/v2/events?series_ticker={series_ticker}&status=open&limit=10"
+        path = f"/events?series_ticker={series_ticker}&status=open&limit=10"
         headers = self._auth_headers("GET", path)
         response = requests.get(self.base_url + path, headers=headers, timeout=30)
         response.raise_for_status()
         return response.json()
 
     def get_event(self, event_ticker: str):
-        path = f"/trade-api/v2/events/{event_ticker}"
+        path = f"/events/{event_ticker}"
         headers = self._auth_headers("GET", path)
         response = requests.get(self.base_url + path, headers=headers, timeout=30)
         response.raise_for_status()
         return response.json()
 
     def get_market(self, market_ticker: str):
-        path = f"/trade-api/v2/markets/{market_ticker}"
+        path = f"/markets/{market_ticker}"
         headers = self._auth_headers("GET", path)
         response = requests.get(self.base_url + path, headers=headers, timeout=30)
         response.raise_for_status()
