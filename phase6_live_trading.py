@@ -690,7 +690,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                     trade_pnl_pct = (position.pnl / (position.entry_price * position.quantity)) * 100 if position.quantity > 0 else 0
                     log_trade_to_csv(
                         session_info={
-                            "session_number": session_count,
+                            "session_number": session_number,
                             "session_start_time": session_start_time,
                             "session_end_time": now,
                             "market_ticker": market_ticker,
@@ -929,7 +929,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                         trade_pnl_pct = (position.pnl / (position.entry_price * position.quantity)) * 100 if position.quantity > 0 else 0
                         log_trade_to_csv(
                             session_info={
-                                "session_number": session_count,
+                                "session_number": session_number,
                                 "session_start_time": session_start_time,
                                 "session_end_time": now,
                                 "market_ticker": market_ticker,
