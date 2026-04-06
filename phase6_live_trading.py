@@ -424,26 +424,6 @@ def safe_float(val):
         return None
 
 
-def extract_target_boundary_from_ticker(market_ticker: str) -> int:
-    """
-    Extract the target boundary price from market ticker.
-    Example: KXBTC15M-26APR060130-30 -> 69530
-    The format is: KXBTC15M-[DATE][TIME]-[BOUNDARY]
-    where BOUNDARY is in thousands (e.g., 30 = 69,530)
-    """
-    try:
-        # Split by '-' and get the last part (boundary)
-        parts = market_ticker.split('-')
-        if len(parts) >= 3:
-            boundary_str = parts[-1]  # e.g., "30"
-            boundary_thousands = int(boundary_str)
-            # BTC price is typically 69,000 + boundary
-            # The base is 69,000 for current BTC prices
-            target_price = 69000 + boundary_thousands
-            return target_price
-        return None
-    except (ValueError, IndexError):
-        return None
 
 
 def fmt_dollars(amount: float) -> str:
@@ -617,6 +597,17 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
     pending_entry_order_id = None
     pending_entry_side = None
     pending_exit_order_id = None
+    
+    # Fetch market data to get floor_strike (target boundary price) for Rule 1
+    target_boundary_price = None
+    try:
+        market_data = client.get_market(market_ticker)
+        market_info = market_data.get("market", {})
+        target_boundary_price = safe_float(market_info.get("floor_strike"))
+        if target_boundary_price:
+            print(f"[Rule 1] Target boundary price: ${target_boundary_price:.2f}")
+    except Exception as e:
+        print(f"Warning: Could not fetch market floor_strike for Rule 1: {e}")
 
     async with websockets.connect(
         WS_URL,
@@ -666,12 +657,16 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
             no_bid = (1.0 - yes_ask_f) if yes_ask_f is not None else None
             no_ask = (1.0 - yes_bid_f) if yes_bid_f is not None else None
             
-            # Extract current BTC price from ticker message (in dollars)
-            btc_price_str = msg.get("price_dollars")
-            current_btc_price = safe_float(btc_price_str)
-            
-            # Extract target boundary price from market ticker
-            target_boundary_price = extract_target_boundary_from_ticker(market_ticker)
+            # For Rule 1: Fetch current BTC price (expiration_value) every 10 updates
+            # This is the actual BTC price that will be used for settlement
+            current_btc_price = None
+            if update_count % 10 == 0 and target_boundary_price is not None:
+                try:
+                    market_data = client.get_market(market_ticker)
+                    market_info = market_data.get("market", {})
+                    current_btc_price = safe_float(market_info.get("expiration_value"))
+                except Exception as e:
+                    pass  # Silently fail, will try again on next interval
 
             current_time = datetime.now(close_time.tzinfo)
             market_closed = current_time >= close_time
