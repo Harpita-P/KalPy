@@ -91,18 +91,21 @@ class KalshiClient:
         path = f"/trade-api/v2/events?series_ticker={series_ticker}&status=open&limit=10"
         headers = self._auth_headers("GET", path)
         response = requests.get(self.base_url + path, headers=headers, timeout=30)
+        response.raise_for_status()
         return response.json()
 
     def get_event(self, event_ticker: str):
         path = f"/trade-api/v2/events/{event_ticker}"
         headers = self._auth_headers("GET", path)
         response = requests.get(self.base_url + path, headers=headers, timeout=30)
+        response.raise_for_status()
         return response.json()
 
     def get_market(self, market_ticker: str):
         path = f"/trade-api/v2/markets/{market_ticker}"
         headers = self._auth_headers("GET", path)
         response = requests.get(self.base_url + path, headers=headers, timeout=30)
+        response.raise_for_status()
         return response.json()
 
 # Price tracking configuration
@@ -194,8 +197,16 @@ async def track_crypto_prices(client: KalshiClient, crypto_name: str, series_tic
     while True:
         try:
             # Get events for this series
-            events_data = client.get_events(series_ticker)
-            events = events_data.get("events", [])
+            try:
+                events_data = client.get_events(series_ticker)
+                events = events_data.get("events", [])
+            except Exception as e:
+                print(f"[{crypto_name}] ERROR getting events: {e}")
+                print(f"[{crypto_name}] Error type: {type(e).__name__}")
+                import traceback
+                traceback.print_exc()
+                await asyncio.sleep(10)
+                continue
             
             if not events:
                 print(f"[{crypto_name}] No active events found, waiting 60s...")
