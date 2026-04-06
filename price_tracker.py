@@ -284,8 +284,8 @@ async def track_crypto_prices(client: KalshiClient, crypto_name: str, series_tic
                         
                         if data.get("type") == "ticker":
                             msg_data = data.get("msg", {})
-                            yes_bid = msg_data.get("yes_bid")
-                            yes_ask = msg_data.get("yes_ask")
+                            yes_bid = msg_data.get("yes_bid_dollars")
+                            yes_ask = msg_data.get("yes_ask_dollars")
                             
                             yes_bid_f = safe_float(yes_bid)
                             yes_ask_f = safe_float(yes_ask)
