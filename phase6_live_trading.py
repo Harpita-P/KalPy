@@ -27,8 +27,15 @@ if not API_KEY_ID or not PRIVATE_KEY_PATH or not BASE_URL:
 
 # Trading parameters - SAFETY FIRST: 2% position sizing
 ENTRY_TRIGGER = 0.91  # Enter when ask >= 91 cents
-EXIT_TRIGGER = 0.80   # Exit when price falls to <= 80 cents
+EXIT_TRIGGER = 0.80   # Exit when price falls to <= 82 cents
 POSITION_SIZE_PCT = 0.40  # Use 40% of account balance
+
+# LOSS PREVENTION RULES
+# Rule 1: Emergency exit when at 99%+ but BTC price too close to target boundary
+# This prevents rare market settlement loss scenarios where the outcome flips last minute
+# when we're at 99% but BTC is within $100 of the boundary price, causing 100% loss
+RULE1_EMERGENCY_EXIT_THRESHOLD = 0.99  # Trigger rule when position value >= 99%
+RULE1_MIN_PRICE_BUFFER = 100  # Minimum $100 buffer between current BTC price and boundary
 
 
 def base_url_to_ws_url(base_url: str) -> str:
@@ -407,12 +414,35 @@ def find_latest_btc15m_market(client: KalshiClient) -> str | None:
     return ticker
 
 
-def safe_float(value) -> float | None:
-    if value is None:
+def safe_float(val):
+    """Safely convert to float, return None if invalid"""
+    if val is None:
         return None
     try:
-        return float(value)
+        return float(val)
     except (ValueError, TypeError):
+        return None
+
+
+def extract_target_boundary_from_ticker(market_ticker: str) -> int:
+    """
+    Extract the target boundary price from market ticker.
+    Example: KXBTC15M-26APR060130-30 -> 69530
+    The format is: KXBTC15M-[DATE][TIME]-[BOUNDARY]
+    where BOUNDARY is in thousands (e.g., 30 = 69,530)
+    """
+    try:
+        # Split by '-' and get the last part (boundary)
+        parts = market_ticker.split('-')
+        if len(parts) >= 3:
+            boundary_str = parts[-1]  # e.g., "30"
+            boundary_thousands = int(boundary_str)
+            # BTC price is typically 69,000 + boundary
+            # The base is 69,000 for current BTC prices
+            target_price = 69000 + boundary_thousands
+            return target_price
+        return None
+    except (ValueError, IndexError):
         return None
 
 
@@ -635,6 +665,13 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
 
             no_bid = (1.0 - yes_ask_f) if yes_ask_f is not None else None
             no_ask = (1.0 - yes_bid_f) if yes_bid_f is not None else None
+            
+            # Extract current BTC price from ticker message (in dollars)
+            btc_price_str = msg.get("price_dollars")
+            current_btc_price = safe_float(btc_price_str)
+            
+            # Extract target boundary price from market ticker
+            target_boundary_price = extract_target_boundary_from_ticker(market_ticker)
 
             current_time = datetime.now(close_time.tzinfo)
             market_closed = current_time >= close_time
@@ -858,18 +895,64 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                                 except:
                                     pass
 
-            # EXIT LOGIC: Have position and price drops significantly from entry
+            # RULE 1: Emergency exit when at 99%+ but BTC price too close to target boundary
+            # This prevents rare settlement loss scenarios where outcome flips last minute
             elif position is not None and pending_exit_order_id is None:
-                # For YES position, check YES ask price
-                # For NO position, check NO ask price
+                # Determine current position value
                 if position.side == "yes":
                     current_price = yes_ask_f
                 else:
                     current_price = no_ask
                 
+                # Check if Rule 1 should trigger
+                rule1_triggered = False
+                if (current_price is not None and 
+                    current_price >= RULE1_EMERGENCY_EXIT_THRESHOLD and
+                    current_btc_price is not None and 
+                    target_boundary_price is not None):
+                    
+                    # Calculate price difference between current BTC and target boundary
+                    if position.side == "yes":
+                        # For YES position: BTC should be well above boundary
+                        price_diff = current_btc_price - target_boundary_price
+                    else:
+                        # For NO position: BTC should be well below boundary
+                        price_diff = target_boundary_price - current_btc_price
+                    
+                    # If difference is less than minimum buffer, trigger emergency exit
+                    if price_diff < RULE1_MIN_PRICE_BUFFER:
+                        rule1_triggered = True
+                        print(f"\n[{now}] ⚠️  RULE 1 TRIGGERED - EMERGENCY EXIT ⚠️")
+                        print(f"Position at {fmt_cents(current_price)} (99%+) but BTC price too close to boundary!")
+                        print(f"Current BTC: ${current_btc_price:.2f} | Target: ${target_boundary_price} | Diff: ${price_diff:.2f}")
+                        print(f"Risk: Outcome could flip last minute causing 100% loss")
+                        print(f"Action: Selling immediately at {fmt_cents(current_price)}")
+                
+                # Rule 1 emergency exit
+                if rule1_triggered:
+                    price_cents = int(current_price * 100)
+                    
+                    try:
+                        print(f"\n[{now}] PLACING EMERGENCY SELL ORDER: {position.side.upper()} @ {fmt_cents(current_price)} x {position.quantity}")
+                        order_response = client.create_order(
+                            ticker=market_ticker,
+                            side=position.side,
+                            action="sell",
+                            count=position.quantity,
+                            yes_price=price_cents if position.side == "yes" else None,
+                            no_price=price_cents if position.side == "no" else None
+                        )
+                        order = order_response.get("order", {})
+                        exit_order_id = order.get("order_id")
+                        pending_exit_order_id = exit_order_id
+                        print(f"Emergency exit order placed: {exit_order_id}")
+                            
+                    except Exception as e:
+                        print(f"[{now}] ERROR placing emergency exit order: {e}")
+                
                 # Exit when price drops below EXIT_TRIGGER (loss scenario)
                 # This means: bought at higher price, now trading at lower price
-                if current_price is not None and current_price <= EXIT_TRIGGER and current_price < position.entry_price:
+                elif current_price is not None and current_price <= EXIT_TRIGGER and current_price < position.entry_price:
                     price_cents = int(current_price * 100)
                     
                     try:
