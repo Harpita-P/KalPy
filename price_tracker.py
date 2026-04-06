@@ -245,6 +245,7 @@ async def track_crypto_prices(client: KalshiClient, crypto_name: str, series_tic
             
             # Connect to WebSocket
             ws_headers = client.ws_auth_headers()
+            update_count = 0
             async with websockets.connect(WS_URL, additional_headers=ws_headers) as ws:
                 # Subscribe to ticker
                 subscribe_msg = {
@@ -260,6 +261,7 @@ async def track_crypto_prices(client: KalshiClient, crypto_name: str, series_tic
                 print(f"[{crypto_name}] Connected to WebSocket for {market_ticker}")
                 
                 async for message in ws:
+                    update_count += 1
                     # Handle multiple JSON objects in one message
                     try:
                         # Try to parse as single JSON first
@@ -276,6 +278,10 @@ async def track_crypto_prices(client: KalshiClient, crypto_name: str, series_tic
                                     pass
                     
                     for data in messages:
+                        # Debug: Print first few messages to see structure
+                        if update_count < 3:
+                            print(f"[{crypto_name}] DEBUG message: {data}")
+                        
                         if data.get("type") == "ticker":
                             msg_data = data.get("msg", {})
                             yes_bid = msg_data.get("yes_bid")
