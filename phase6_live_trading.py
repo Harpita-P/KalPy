@@ -61,59 +61,63 @@ def ensure_csv_exists():
 
 def log_trade_to_csv(session_info: dict, trade_info: dict):
     """Log a single trade to CSV"""
-    ensure_csv_exists()
-    
-    # Calculate hold duration
-    hold_duration = None
-    if trade_info.get("buy_time") and trade_info.get("sell_time"):
-        try:
-            buy_dt = datetime.strptime(trade_info["buy_time"], "%Y-%m-%d %H:%M:%S")
-            sell_dt = datetime.strptime(trade_info["sell_time"], "%Y-%m-%d %H:%M:%S")
-            hold_duration = int((sell_dt - buy_dt).total_seconds())
-        except:
-            hold_duration = None
-    
-    # Determine outcome
-    outcome = "OPEN"
-    if trade_info.get("sold"):
-        outcome = "WIN" if trade_info.get("trade_pnl", 0) >= 0 else "LOSS"
-    
-    # Extract session date from start time
-    session_date = session_info["session_start_time"].split()[0] if session_info.get("session_start_time") else ""
-    
-    row = [
-        session_info.get("session_number", ""),
-        session_date,
-        session_info.get("session_start_time", ""),
-        session_info.get("session_end_time", ""),
-        session_info.get("market_ticker", ""),
-        session_info.get("starting_balance", ""),
-        session_info.get("ending_balance", ""),
-        session_info.get("session_pnl", ""),
-        session_info.get("session_pnl_percent", ""),
-        trade_info.get("trade_number", ""),
-        trade_info.get("side", "").upper(),
-        trade_info.get("buy_time", ""),
-        trade_info.get("buy_price", ""),
-        trade_info.get("buy_quantity", ""),
-        trade_info.get("buy_cost", ""),
-        trade_info.get("buy_order_id", ""),
-        trade_info.get("sold", False),
-        trade_info.get("sell_time", ""),
-        trade_info.get("sell_price", ""),
-        trade_info.get("sell_quantity", ""),
-        trade_info.get("sell_proceeds", ""),
-        trade_info.get("sell_order_id", ""),
-        trade_info.get("exit_type", ""),
-        trade_info.get("trade_pnl", ""),
-        trade_info.get("trade_pnl_percent", ""),
-        hold_duration if hold_duration is not None else "",
-        outcome
-    ]
-    
-    with open(CSV_LOG_PATH, 'a', newline='') as f:
-        writer = csv.writer(f)
-        writer.writerow(row)
+    try:
+        ensure_csv_exists()
+        
+        # Calculate hold duration
+        hold_duration = None
+        if trade_info.get("buy_time") and trade_info.get("sell_time"):
+            try:
+                buy_dt = datetime.strptime(trade_info["buy_time"], "%Y-%m-%d %H:%M:%S")
+                sell_dt = datetime.strptime(trade_info["sell_time"], "%Y-%m-%d %H:%M:%S")
+                hold_duration = int((sell_dt - buy_dt).total_seconds())
+            except:
+                hold_duration = None
+        
+        # Determine outcome
+        outcome = "OPEN"
+        if trade_info.get("sold"):
+            outcome = "WIN" if trade_info.get("trade_pnl", 0) >= 0 else "LOSS"
+        
+        # Extract session date from start time
+        session_date = session_info["session_start_time"].split()[0] if session_info.get("session_start_time") else ""
+        
+        row = [
+            session_info.get("session_number", ""),
+            session_date,
+            session_info.get("session_start_time", ""),
+            session_info.get("session_end_time", ""),
+            session_info.get("market_ticker", ""),
+            session_info.get("starting_balance", ""),
+            session_info.get("ending_balance", ""),
+            session_info.get("session_pnl", ""),
+            session_info.get("session_pnl_percent", ""),
+            trade_info.get("trade_number", ""),
+            trade_info.get("side", "").upper(),
+            trade_info.get("buy_time", ""),
+            trade_info.get("buy_price", ""),
+            trade_info.get("buy_quantity", ""),
+            trade_info.get("buy_cost", ""),
+            trade_info.get("buy_order_id", ""),
+            trade_info.get("sold", False),
+            trade_info.get("sell_time", ""),
+            trade_info.get("sell_price", ""),
+            trade_info.get("sell_quantity", ""),
+            trade_info.get("sell_proceeds", ""),
+            trade_info.get("sell_order_id", ""),
+            trade_info.get("exit_type", ""),
+            trade_info.get("trade_pnl", ""),
+            trade_info.get("trade_pnl_percent", ""),
+            hold_duration if hold_duration is not None else "",
+            outcome
+        ]
+        
+        with open(CSV_LOG_PATH, 'a', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(row)
+    except Exception as e:
+        print(f"WARNING: Failed to log trade to CSV: {e}")
+        # Don't crash the bot if CSV logging fails
 
 
 class KalshiClient:
@@ -687,7 +691,9 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                         outcome = f"Held {position.side.upper()} to close - LOST"
                     
                     # Log to CSV
-                    trade_pnl_pct = (position.pnl / (position.entry_price * position.quantity)) * 100 if position.quantity > 0 else 0
+                    trade_cost = position.entry_price * position.quantity
+                    trade_pnl_pct = (position.pnl / trade_cost) * 100 if trade_cost > 0 else 0
+                    session_pnl_pct = ((current_balance - session_start_balance) / session_start_balance) * 100 if session_start_balance > 0 else 0
                     log_trade_to_csv(
                         session_info={
                             "session_number": session_number,
@@ -697,7 +703,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                             "starting_balance": session_start_balance,
                             "ending_balance": current_balance,
                             "session_pnl": current_balance - session_start_balance,
-                            "session_pnl_percent": ((current_balance - session_start_balance) / session_start_balance) * 100
+                            "session_pnl_percent": session_pnl_pct
                         },
                         trade_info={
                             "trade_number": len(trades_log),
@@ -926,7 +932,9 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                             outcome = f"Exited {position.side.upper()} at stop - Loss"
                         
                         # Log to CSV
-                        trade_pnl_pct = (position.pnl / (position.entry_price * position.quantity)) * 100 if position.quantity > 0 else 0
+                        trade_cost = position.entry_price * position.quantity
+                        trade_pnl_pct = (position.pnl / trade_cost) * 100 if trade_cost > 0 else 0
+                        session_pnl_pct = ((current_balance - session_start_balance) / session_start_balance) * 100 if session_start_balance > 0 else 0
                         log_trade_to_csv(
                             session_info={
                                 "session_number": session_number,
@@ -936,7 +944,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                                 "starting_balance": session_start_balance,
                                 "ending_balance": current_balance,
                                 "session_pnl": current_balance - session_start_balance,
-                                "session_pnl_percent": ((current_balance - session_start_balance) / session_start_balance) * 100
+                                "session_pnl_percent": session_pnl_pct
                             },
                             trade_info={
                                 "trade_number": len(trades_log),
