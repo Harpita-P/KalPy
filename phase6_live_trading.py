@@ -28,7 +28,7 @@ if not API_KEY_ID or not PRIVATE_KEY_PATH or not BASE_URL:
 
 # Trading parameters - SAFETY FIRST: 2% position sizing
 ENTRY_TRIGGER = 0.95  # Enter when ask >= 95 cents
-EXIT_TRIGGER = 0.85  # Exit when price falls to 85 cents
+EXIT_TRIGGER = 0.88  # Exit when price falls to 88 cents
 POSITION_SIZE_PCT = 0.40  # Use 40% of account balance
 TRADING_DELAY_MINUTES = 7  # Only trade when 8 minutes or less remain (after 7-minute mark)
 MINIMUM_ACCOUNT_BALANCE = 80.00  # Minimum balance required to continue trading
