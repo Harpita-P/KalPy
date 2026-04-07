@@ -3,6 +3,7 @@ import base64
 import csv
 import json
 import os
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
@@ -1286,8 +1287,15 @@ async def main_loop():
             balance = new_balance
             print(f"Rolling over balance to next session: {fmt_dollars(balance)}")
         
-        print("Waiting 30 seconds before finding next market...\n")
-        await asyncio.sleep(30)
+        print("\n" + "=" * 80)
+        print("SESSION COMPLETE - RESTARTING BOT FOR FRESH START")
+        print("=" * 80)
+        print("Shutting down current instance...")
+        print("Restarting script in 3 seconds...\n")
+        await asyncio.sleep(3)
+        
+        # Restart the script to refresh everything
+        os.execv(sys.executable, [sys.executable] + sys.argv)
 
 
 def main():
