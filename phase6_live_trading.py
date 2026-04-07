@@ -1076,7 +1076,22 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                                 price_dollars = fill.get("no_price_dollars", "0")
                                 avg_fill_price = safe_float(price_dollars)
                     
-                    if total_filled > 0:
+                    if total_filled > 0 and total_filled < position.quantity:
+                        # PARTIAL FILL ON EXIT - This is a critical error
+                        print("\n" + "!" * 80)
+                        print("⛔ PARTIAL EXIT FILL DETECTED - SHUTTING DOWN ⛔")
+                        print("!" * 80)
+                        print(f"Expected to sell: {position.quantity} contracts")
+                        print(f"Actually sold: {total_filled} contracts")
+                        print(f"Remaining position: {position.quantity - total_filled} contracts")
+                        print(f"\nProceeds from partial fill: ${avg_fill_price * total_filled:.2f}")
+                        print(f"Balance after partial fill: ${current_balance + (avg_fill_price * total_filled):.2f}")
+                        print("\n⚠️  BOT SHUT DOWN - PARTIAL EXIT FILL IS UNACCEPTABLE ⚠️")
+                        print("!" * 80 + "\n")
+                        raise RuntimeError(f"Partial exit fill detected: sold {total_filled}/{position.quantity} contracts")
+                    
+                    elif total_filled > 0 and total_filled == position.quantity:
+                        # FULL FILL - Close position completely
                         proceeds = avg_fill_price * total_filled
                         current_balance += proceeds
                         position.close(avg_fill_price, now, pending_exit_order_id)
