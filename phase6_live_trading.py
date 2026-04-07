@@ -1060,21 +1060,30 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
             # Check if pending exit order has filled
             if pending_exit_order_id and position is not None:
                 try:
+                    # Wait 2 seconds to ensure all fills are reported
+                    await asyncio.sleep(2)
+                    
                     fills_response = client.get_fills(ticker=market_ticker, limit=20)
                     fills = fills_response.get("fills", [])
                     
                     total_filled = 0
                     avg_fill_price = 0
+                    fill_prices = []
                     for fill in fills:
                         if fill.get("order_id") == pending_exit_order_id:
                             count = int(float(fill.get("count_fp", "0")))
                             total_filled += count
                             if position.side == "yes":
                                 price_dollars = fill.get("yes_price_dollars", "0")
-                                avg_fill_price = safe_float(price_dollars)
+                                fill_price = safe_float(price_dollars)
                             else:
                                 price_dollars = fill.get("no_price_dollars", "0")
-                                avg_fill_price = safe_float(price_dollars)
+                                fill_price = safe_float(price_dollars)
+                            fill_prices.append(fill_price)
+                    
+                    # Calculate weighted average fill price
+                    if fill_prices:
+                        avg_fill_price = sum(fill_prices) / len(fill_prices)
                     
                     if total_filled > 0 and total_filled < position.quantity:
                         # PARTIAL FILL ON EXIT - This is a critical error
