@@ -653,6 +653,50 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                 
                 # Reset retry count on successful connection
                 retry_count = 0
+                
+                # CRITICAL: Check for pending orders immediately after reconnection
+                if retry_count > 0 or pending_exit_order_id:
+                    if pending_exit_order_id and position is not None:
+                        print(f"\n⚠️  Checking pending exit order after reconnection: {pending_exit_order_id}")
+                        try:
+                            await asyncio.sleep(2)  # Wait for fills to be reported
+                            fills_response = client.get_fills(ticker=market_ticker, limit=20)
+                            fills = fills_response.get("fills", [])
+                            
+                            total_filled = 0
+                            fill_prices = []
+                            for fill in fills:
+                                if fill.get("order_id") == pending_exit_order_id:
+                                    count = int(float(fill.get("count_fp", "0")))
+                                    total_filled += count
+                                    if position.side == "yes":
+                                        fill_price = safe_float(fill.get("yes_price_dollars", "0"))
+                                    else:
+                                        fill_price = safe_float(fill.get("no_price_dollars", "0"))
+                                    fill_prices.append(fill_price)
+                            
+                            if total_filled > 0:
+                                avg_fill_price = sum(fill_prices) / len(fill_prices) if fill_prices else 0
+                                proceeds = avg_fill_price * total_filled
+                                current_balance += proceeds
+                                
+                                print(f"✓ Exit order filled during disconnect: {total_filled} contracts @ ${avg_fill_price:.2f}")
+                                print(f"✓ Proceeds: ${proceeds:.2f}")
+                                print(f"✓ New balance: ${current_balance:.2f}\n")
+                                
+                                # Close position and log trade
+                                position.exit_price = avg_fill_price
+                                position.exit_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                position.exit_order_id = pending_exit_order_id
+                                position.close()
+                                
+                                trades_log.append(position)
+                                position = None
+                                pending_exit_order_id = None
+                            else:
+                                print(f"⚠️  Exit order not filled yet - continuing to monitor\n")
+                        except Exception as e:
+                            print(f"❌ Error checking pending exit order: {e}\n")
 
                 async for raw_message in ws:
             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
