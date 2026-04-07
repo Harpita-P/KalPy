@@ -310,9 +310,9 @@ class KalshiClient:
         return response.json()
 
 
-def text_contains_btc(*values) -> bool:
+def text_contains_xrp(*values) -> bool:
     text = " ".join(str(v or "") for v in values).lower()
-    keywords = ["btc", "bitcoin", "kxbtc"]
+    keywords = ["xrp", "ripple", "kxxrp"]
     return any(k in text for k in keywords)
 
 
@@ -353,15 +353,15 @@ def milestone_priority(m: dict):
     return (-priority, ts)
 
 
-def find_latest_btc15m_market(client: KalshiClient) -> str | None:
-    print("Finding latest BTC 15-minute market...")
+def find_latest_xrp15m_market(client: KalshiClient) -> str | None:
+    print("Finding latest XRP 15-minute market...")
     
     data = client.get_milestones(category="Crypto", limit=200)
     milestones = data.get("milestones", [])
     
-    btc_milestones = [
+    xrp_milestones = [
         m for m in milestones
-        if text_contains_btc(
+        if text_contains_xrp(
             m.get("title"),
             m.get("category"),
             m.get("related_event_tickers"),
@@ -369,12 +369,12 @@ def find_latest_btc15m_market(client: KalshiClient) -> str | None:
         )
     ]
     
-    if not btc_milestones:
-        print("No BTC milestones found.")
+    if not xrp_milestones:
+        print("No XRP milestones found.")
         return None
     
-    btc_milestones.sort(key=milestone_priority, reverse=True)
-    chosen_milestone = btc_milestones[0]
+    xrp_milestones.sort(key=milestone_priority, reverse=True)
+    chosen_milestone = xrp_milestones[0]
     
     print(f"Selected milestone: {chosen_milestone.get('title')}")
     
@@ -403,7 +403,7 @@ def find_latest_btc15m_market(client: KalshiClient) -> str | None:
     ]
     
     if not active_markets:
-        print("No active XRP15M markets found.")
+        print("No active XRP 15-minute markets found.")
         return None
     
     active_markets.sort(
@@ -1131,10 +1131,10 @@ async def main_loop():
             except Exception as e:
                 print(f"Could not refresh balance: {e}, using previous: {fmt_dollars(balance)}\n")
         
-        ticker = find_latest_btc15m_market(client)
+        ticker = find_latest_xrp15m_market(client)
 
         if not ticker:
-            print("\nCould not find an active BTC 15-minute market.")
+            print("\nCould not find an active XRP 15-minute market.")
             print("Waiting 30 seconds before trying again...\n")
             await asyncio.sleep(30)
             continue
