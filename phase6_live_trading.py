@@ -595,7 +595,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
     print(f"Rule 1: Immediate sell at 99%+ to lock in profit (no settlement wait)")
     print(f"Trading Delay: Only trade when <= 12 minutes remain (after {TRADING_DELAY_MINUTES}-minute mark)")
     print(f"Sell Limit: Max 2 sells before 2-min mark, 3rd entry only when <2 mins remain")
-    print(f"Sell Cooldown: 90s (1min 30s) between each sell")
+    print(f"Sell Cooldown: 90s (1min 30s) between sells (NO cooldown in final 2 mins)")
     print("Press Ctrl+C to stop")
     print("=" * 80 + "\n")
 
@@ -879,8 +879,9 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
             trading_allowed = time_remaining <= (15 - TRADING_DELAY_MINUTES)  # 15 min session - 5 min delay = 10 min
             
             # Check if we're in cooldown period after a sell (90s flat cooldown)
+            # BUT: No cooldown when <2 mins remain (allows rapid trading in final 2 minutes)
             in_cooldown = False
-            if last_sell_time is not None:
+            if last_sell_time is not None and time_remaining > 2:
                 seconds_since_sell = (datetime.now() - last_sell_time).total_seconds()
                 in_cooldown = seconds_since_sell < SELL_COOLDOWN_SECONDS
             
