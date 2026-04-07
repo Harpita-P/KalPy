@@ -30,6 +30,7 @@ ENTRY_TRIGGER = 0.74  # Enter when ask >= 74 cents
 STOP_LOSS_PCT = 0.06  # Exit when price falls 6% below entry price (dynamic stop loss)
 POSITION_SIZE_PCT = 0.40  # Use 40% of account balance
 TRADING_DELAY_MINUTES = 3  # Only trade when 12 minutes or less remain (after 3-minute mark)
+SELL_COOLDOWN_SECONDS = 30  # Wait 30 seconds after selling before attempting to buy again
 
 # LOSS PREVENTION RULES
 # Rule 1: Emergency exit when at 99%+ but BTC price too close to target boundary
@@ -593,6 +594,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
     print(f"Entry Rule: First side whose ASK reaches >= {fmt_cents(ENTRY_TRIGGER)}")
     print(f"Exit Rule: Dynamic stop loss at {STOP_LOSS_PCT * 100:.0f}% below entry price")
     print(f"Trading Delay: Only trade when <= 12 minutes remain (after {TRADING_DELAY_MINUTES}-minute mark)")
+    print(f"Sell Cooldown: {SELL_COOLDOWN_SECONDS}s wait after selling before next buy")
     print("Press Ctrl+C to stop")
     print("=" * 80 + "\n")
 
@@ -610,6 +612,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
     rule1_exit_time = None  # Store exit time when Rule 1 triggers
     rule1_exit_price = None  # Store exit price when Rule 1 triggers
     rule1_boundary_diff = None  # Store boundary difference when Rule 1 triggers
+    last_sell_time = None  # Track last sell time for cooldown period
     
     # Fetch market data to get floor_strike (target boundary price) for Rule 1
     target_boundary_price = None
@@ -837,11 +840,22 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
             time_remaining = (close_time - current_time).total_seconds() / 60  # minutes
             trading_allowed = time_remaining <= (15 - TRADING_DELAY_MINUTES)  # 15 min session - 5 min delay = 10 min
             
+            # Check if we're in cooldown period after a sell
+            in_cooldown = False
+            if last_sell_time is not None:
+                seconds_since_sell = (datetime.now() - last_sell_time).total_seconds()
+                in_cooldown = seconds_since_sell < SELL_COOLDOWN_SECONDS
+            
             if position is None and pending_entry_order_id is None and not rule1_exit_triggered:
                 if not trading_allowed:
-                    # Still waiting for 5-minute mark
+                    # Still waiting for trading window
                     if update_count % 10 == 0:  # Log every 10 updates
                         print(f"[{now}] Waiting for trading window... {time_remaining:.1f} minutes remaining (need <= 12 min)")
+                elif in_cooldown:
+                    # In cooldown period after sell
+                    cooldown_remaining = SELL_COOLDOWN_SECONDS - seconds_since_sell
+                    if update_count % 10 == 0:  # Log every 10 updates
+                        print(f"[{now}] Cooldown active: {cooldown_remaining:.0f}s remaining before next buy allowed")
                 elif yes_ask_f is not None and yes_ask_f >= ENTRY_TRIGGER:
                     position_value_dollars = current_balance * POSITION_SIZE_PCT
                     quantity = max(1, int(position_value_dollars / yes_ask_f))
@@ -1048,6 +1062,9 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                         current_balance += proceeds
                         position.close(avg_fill_price, now, pending_exit_order_id)
                         
+                        # Record sell time for cooldown period
+                        last_sell_time = datetime.now()
+                        
                         print("\n" + "<" * 80)
                         print(f"[{now}] EXIT FILLED: SELL {position.side.upper()}")
                         print(f"Exit Price: {fmt_cents(avg_fill_price)}")
@@ -1055,6 +1072,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                         print(f"Proceeds: {fmt_dollars(proceeds)}")
                         print(f"P&L: {fmt_dollars(position.pnl)}")
                         print(f"New Balance: {fmt_dollars(current_balance)}")
+                        print(f"[{now}] 30-second cooldown activated - no new entries for {SELL_COOLDOWN_SECONDS}s")
                         print("<" * 80 + "\n")
                         
                         trades_log.append(position)
