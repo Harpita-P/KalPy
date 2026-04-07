@@ -30,7 +30,7 @@ ENTRY_TRIGGER = 0.74  # Enter when ask >= 74 cents
 STOP_LOSS_PCT = 0.06  # Exit when price falls 6% below entry price (dynamic stop loss)
 POSITION_SIZE_PCT = 0.40  # Use 40% of account balance
 TRADING_DELAY_MINUTES = 3  # Only trade when 12 minutes or less remain (after 3-minute mark)
-SELL_COOLDOWN_SECONDS = 30  # Wait 30 seconds after selling before attempting to buy again
+# Dynamic cooldown: 60s if >4 mins remain, 30s if ≤4 mins remain
 
 # LOSS PREVENTION RULES
 # Rule 1: Emergency exit when position reaches 99%+ value
@@ -310,9 +310,9 @@ class KalshiClient:
         return response.json()
 
 
-def text_contains_xrp(*values) -> bool:
+def text_contains_btc(*values) -> bool:
     text = " ".join(str(v or "") for v in values).lower()
-    keywords = ["xrp", "ripple", "kxxrp"]
+    keywords = ["btc", "bitcoin", "kxbtc"]
     return any(k in text for k in keywords)
 
 
@@ -353,15 +353,15 @@ def milestone_priority(m: dict):
     return (-priority, ts)
 
 
-def find_latest_xrp15m_market(client: KalshiClient) -> str | None:
-    print("Finding latest XRP 15-minute market...")
+def find_latest_btc15m_market(client: KalshiClient) -> str | None:
+    print("Finding latest BTC 15-minute market...")
     
     data = client.get_milestones(category="Crypto", limit=200)
     milestones = data.get("milestones", [])
     
-    xrp_milestones = [
+    btc_milestones = [
         m for m in milestones
-        if text_contains_xrp(
+        if text_contains_btc(
             m.get("title"),
             m.get("category"),
             m.get("related_event_tickers"),
@@ -369,12 +369,12 @@ def find_latest_xrp15m_market(client: KalshiClient) -> str | None:
         )
     ]
     
-    if not xrp_milestones:
-        print("No XRP milestones found.")
+    if not btc_milestones:
+        print("No BTC milestones found.")
         return None
     
-    xrp_milestones.sort(key=milestone_priority, reverse=True)
-    chosen_milestone = xrp_milestones[0]
+    btc_milestones.sort(key=milestone_priority, reverse=True)
+    chosen_milestone = btc_milestones[0]
     
     print(f"Selected milestone: {chosen_milestone.get('title')}")
     
@@ -391,19 +391,19 @@ def find_latest_xrp15m_market(client: KalshiClient) -> str | None:
         print("No markets found for this event.")
         return None
     
-    xrp15m_markets = [
+    btc15m_markets = [
         m for m in nested_markets
-        if (m.get("event_ticker") or "").upper().startswith("KXXRP15M")
-        or (m.get("ticker") or "").upper().startswith("KXXRP15M")
+        if (m.get("event_ticker") or "").upper().startswith("KXBTC15M")
+        or (m.get("ticker") or "").upper().startswith("KXBTC15M")
     ]
     
     active_markets = [
-        m for m in xrp15m_markets
+        m for m in btc15m_markets
         if (m.get("status") or "").lower() == "active"
     ]
     
     if not active_markets:
-        print("No active XRP 15-minute markets found.")
+        print("No active BTC 15-minute markets found.")
         return None
     
     active_markets.sort(
@@ -593,7 +593,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
     print(f"Exit Rule: Dynamic stop loss at {STOP_LOSS_PCT * 100:.0f}% below entry price")
     print(f"Rule 1: Immediate sell at 99%+ to lock in profit (no settlement wait)")
     print(f"Trading Delay: Only trade when <= 12 minutes remain (after {TRADING_DELAY_MINUTES}-minute mark)")
-    print(f"Sell Cooldown: {SELL_COOLDOWN_SECONDS}s wait after selling before next buy")
+    print(f"Sell Cooldown: Dynamic (60s if >4 mins remain, 30s if ≤4 mins remain)")
     print("Press Ctrl+C to stop")
     print("=" * 80 + "\n")
 
@@ -606,6 +606,8 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
     outcome = "No trades"
     pending_entry_order_id = None
     pending_entry_side = None
+    pending_entry_quantity = None  # Track expected quantity for partial fill detection
+    pending_entry_time = None  # Track when order was placed
     pending_exit_order_id = None
     rule1_exit_triggered = False  # Flag to prevent re-entry after Rule 1 emergency exit
     rule1_exit_time = None  # Store exit time when Rule 1 triggers
@@ -791,7 +793,35 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                                 price_dollars = fill.get("no_price_dollars", "0")
                                 avg_fill_price = safe_float(price_dollars)
                     
-                    if total_filled > 0:
+                    # Check if order is partially filled or taking too long
+                    time_since_order = (datetime.now() - pending_entry_time).total_seconds() if pending_entry_time else 0
+                    
+                    if total_filled > 0 and total_filled < pending_entry_quantity:
+                        # PARTIAL FILL DETECTED - Cancel the order
+                        print(f"\n[{now}] ⚠️  PARTIAL FILL DETECTED ⚠️")
+                        print(f"Expected: {pending_entry_quantity} contracts | Filled: {total_filled} contracts")
+                        print(f"Canceling order and rejecting partial fill...")
+                        
+                        try:
+                            # Cancel the remaining order
+                            client.delete(f"/portfolio/orders/{pending_entry_order_id}", auth=True)
+                            print(f"Order {pending_entry_order_id} canceled successfully")
+                        except Exception as cancel_error:
+                            print(f"Warning: Could not cancel order: {cancel_error}")
+                        
+                        # Refund the partial fill cost
+                        refund = avg_fill_price * total_filled
+                        current_balance += refund
+                        print(f"Refunded {fmt_dollars(refund)} from partial fill")
+                        print(f"No position created - waiting for next opportunity\n")
+                        
+                        pending_entry_order_id = None
+                        pending_entry_side = None
+                        pending_entry_quantity = None
+                        pending_entry_time = None
+                        
+                    elif total_filled > 0 and total_filled == pending_entry_quantity:
+                        # FULL FILL - Create position
                         position = LivePosition(pending_entry_side, avg_fill_price, total_filled, now, pending_entry_order_id)
                         cost = avg_fill_price * total_filled
                         current_balance -= cost
@@ -799,13 +829,30 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                         print("\n" + ">" * 80)
                         print(f"[{now}] ENTRY FILLED: BUY {pending_entry_side.upper()}")
                         print(f"Entry Price: {fmt_cents(avg_fill_price)}")
-                        print(f"Quantity: {total_filled} contracts")
+                        print(f"Quantity: {total_filled} contracts (FULL FILL)")
                         print(f"Cost: {fmt_dollars(cost)}")
                         print(f"Remaining Balance: {fmt_dollars(current_balance)}")
                         print(">" * 80 + "\n")
                         
                         pending_entry_order_id = None
                         pending_entry_side = None
+                        pending_entry_quantity = None
+                        pending_entry_time = None
+                        
+                    elif total_filled == 0 and time_since_order > 10:
+                        # NO FILL after 10 seconds - Cancel order
+                        print(f"\n[{now}] Order not filled after 10 seconds - canceling...")
+                        try:
+                            client.delete(f"/portfolio/orders/{pending_entry_order_id}", auth=True)
+                            print(f"Order {pending_entry_order_id} canceled")
+                        except Exception as cancel_error:
+                            print(f"Warning: Could not cancel order: {cancel_error}")
+                        
+                        pending_entry_order_id = None
+                        pending_entry_side = None
+                        pending_entry_quantity = None
+                        pending_entry_time = None
+                        
                 except Exception as e:
                     print(f"DEBUG: Error checking fills: {e}")
 
@@ -829,10 +876,12 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
             trading_allowed = time_remaining <= (15 - TRADING_DELAY_MINUTES)  # 15 min session - 5 min delay = 10 min
             
             # Check if we're in cooldown period after a sell
+            # Dynamic cooldown: 60s if >4 mins remain, 30s if ≤4 mins remain
             in_cooldown = False
             if last_sell_time is not None:
                 seconds_since_sell = (datetime.now() - last_sell_time).total_seconds()
-                in_cooldown = seconds_since_sell < SELL_COOLDOWN_SECONDS
+                cooldown_seconds = 60 if time_remaining > 4 else 30
+                in_cooldown = seconds_since_sell < cooldown_seconds
             
             if position is None and pending_entry_order_id is None and not rule1_exit_triggered:
                 if not trading_allowed:
@@ -841,9 +890,9 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                         print(f"[{now}] Waiting for trading window... {time_remaining:.1f} minutes remaining (need <= 12 min)")
                 elif in_cooldown:
                     # In cooldown period after sell
-                    cooldown_remaining = SELL_COOLDOWN_SECONDS - seconds_since_sell
+                    cooldown_remaining = cooldown_seconds - seconds_since_sell
                     if update_count % 10 == 0:  # Log every 10 updates
-                        print(f"[{now}] Cooldown active: {cooldown_remaining:.0f}s remaining before next buy allowed")
+                        print(f"[{now}] Cooldown active: {cooldown_remaining:.0f}s remaining (using {cooldown_seconds}s cooldown)")
                 elif yes_ask_f is not None and yes_ask_f >= ENTRY_TRIGGER:
                     position_value_dollars = current_balance * POSITION_SIZE_PCT
                     quantity = max(1, int(position_value_dollars / yes_ask_f))
@@ -865,6 +914,8 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                             order_id = order.get("order_id")
                             pending_entry_order_id = order_id
                             pending_entry_side = "yes"
+                            pending_entry_quantity = quantity
+                            pending_entry_time = datetime.now()
                             print(f"Order placed: {order_id}")
                                 
                         except Exception as e:
@@ -897,6 +948,8 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                             order_id = order.get("order_id")
                             pending_entry_order_id = order_id
                             pending_entry_side = "no"
+                            pending_entry_quantity = quantity
+                            pending_entry_time = datetime.now()
                             print(f"Order placed: {order_id}")
                                 
                         except Exception as e:
@@ -1027,7 +1080,11 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                         print(f"Proceeds: {fmt_dollars(proceeds)}")
                         print(f"P&L: {fmt_dollars(position.pnl)}")
                         print(f"New Balance: {fmt_dollars(current_balance)}")
-                        print(f"[{now}] 30-second cooldown activated - no new entries for {SELL_COOLDOWN_SECONDS}s")
+                        
+                        # Calculate dynamic cooldown based on time remaining
+                        time_remaining_mins = (close_time - current_time).total_seconds() / 60
+                        cooldown_seconds = 60 if time_remaining_mins > 4 else 30
+                        print(f"[{now}] Cooldown activated: {cooldown_seconds}s (time remaining: {time_remaining_mins:.1f} mins)")
                         print("<" * 80 + "\n")
                         
                         trades_log.append(position)
@@ -1131,10 +1188,10 @@ async def main_loop():
             except Exception as e:
                 print(f"Could not refresh balance: {e}, using previous: {fmt_dollars(balance)}\n")
         
-        ticker = find_latest_xrp15m_market(client)
+        ticker = find_latest_btc15m_market(client)
 
         if not ticker:
-            print("\nCould not find an active XRP 15-minute market.")
+            print("\nCould not find an active BTC 15-minute market.")
             print("Waiting 30 seconds before trying again...\n")
             await asyncio.sleep(30)
             continue
