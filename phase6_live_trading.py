@@ -630,16 +630,31 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
     rule1_exit_price = None  # Store exit price when Rule 1 triggers
     rule1_boundary_diff = None  # Store boundary difference when Rule 1 triggers (legacy field)
 
-    async with websockets.connect(
-        WS_URL,
-        additional_headers=headers,
-        open_timeout=20,
-    ) as ws:
-        print("Connected to Kalshi WebSocket.")
-        await subscribe_to_ticker(ws, market_ticker)
-        print(f"Subscribed to ticker updates for {market_ticker}.\n")
+    # WebSocket reconnection loop
+    max_retries = 5
+    retry_count = 0
+    
+    while retry_count < max_retries:
+        try:
+            async with websockets.connect(
+                WS_URL,
+                additional_headers=headers,
+                open_timeout=20,
+                ping_interval=20,
+                ping_timeout=10,
+            ) as ws:
+                if retry_count > 0:
+                    print(f"\n✓ Reconnected to WebSocket (attempt {retry_count + 1})")
+                else:
+                    print("Connected to Kalshi WebSocket.")
+                
+                await subscribe_to_ticker(ws, market_ticker)
+                print(f"Subscribed to ticker updates for {market_ticker}.\n")
+                
+                # Reset retry count on successful connection
+                retry_count = 0
 
-        async for raw_message in ws:
+                async for raw_message in ws:
             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
             try:
@@ -1222,6 +1237,22 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                     print(f"DEBUG: Error checking exit fills: {e}")
 
             last_yes_ask = yes_ask
+        
+        except websockets.exceptions.ConnectionClosedError as e:
+            retry_count += 1
+            if retry_count < max_retries:
+                wait_time = min(2 ** retry_count, 30)  # Exponential backoff, max 30 seconds
+                print(f"\n⚠️  WebSocket connection lost: {e}")
+                print(f"Reconnecting in {wait_time} seconds... (attempt {retry_count}/{max_retries})")
+                await asyncio.sleep(wait_time)
+                continue
+            else:
+                print(f"\n❌ Failed to reconnect after {max_retries} attempts")
+                raise
+        
+        except Exception as e:
+            print(f"\n❌ Unexpected error in WebSocket loop: {e}")
+            raise
 
 
 async def main_loop():
