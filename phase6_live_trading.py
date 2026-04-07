@@ -30,6 +30,7 @@ ENTRY_TRIGGER = 0.95  # Enter when ask >= 95 cents
 EXIT_TRIGGER = 0.85  # Exit when price falls to 85 cents
 POSITION_SIZE_PCT = 0.40  # Use 40% of account balance
 TRADING_DELAY_MINUTES = 7  # Only trade when 8 minutes or less remain (after 7-minute mark)
+MINIMUM_ACCOUNT_BALANCE = 80.00  # Minimum balance required to continue trading
 # NO COOLDOWNS - Can trade continuously
 
 # LOSS PREVENTION RULES
@@ -588,6 +589,20 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
     print(f"Market: {market_ticker}")
     print(f"Close Time: {close_time_str}")
     print(f"Initial Balance: {fmt_dollars(initial_balance)}")
+    
+    # CRITICAL: Check minimum balance requirement
+    if initial_balance <= MINIMUM_ACCOUNT_BALANCE:
+        print("\n" + "!" * 80)
+        print("⛔ INSUFFICIENT BALANCE - BOT SHUTDOWN ⛔")
+        print("!" * 80)
+        print(f"Current Balance: {fmt_dollars(initial_balance)}")
+        print(f"Minimum Required: {fmt_dollars(MINIMUM_ACCOUNT_BALANCE)}")
+        print(f"\nAccount balance is too low to continue trading safely.")
+        print(f"Please deposit funds to bring balance above ${MINIMUM_ACCOUNT_BALANCE:.2f}")
+        print("\n⚠️  BOT SHUT DOWN - MINIMUM BALANCE REQUIREMENT NOT MET ⚠️")
+        print("!" * 80 + "\n")
+        raise RuntimeError(f"Insufficient balance: ${initial_balance:.2f} <= ${MINIMUM_ACCOUNT_BALANCE:.2f}")
+    
     print(f"Position Size: {POSITION_SIZE_PCT * 100:.1f}% of balance (SAFETY MODE)")
     print(f"Entry Rule: First side whose ASK reaches >= {fmt_cents(ENTRY_TRIGGER)}")
     print(f"Exit Rule: Sell when price falls to {fmt_cents(EXIT_TRIGGER)}")
