@@ -33,11 +33,9 @@ TRADING_DELAY_MINUTES = 3  # Only trade when 12 minutes or less remain (after 3-
 SELL_COOLDOWN_SECONDS = 30  # Wait 30 seconds after selling before attempting to buy again
 
 # LOSS PREVENTION RULES
-# Rule 1: Emergency exit when at 99%+ but BTC price too close to target boundary
-# This prevents rare market settlement loss scenarios where the outcome flips last minute
-# when we're at 99% but BTC is within $100 of the boundary price, causing 100% loss
-RULE1_EMERGENCY_EXIT_THRESHOLD = 0.99  # Trigger rule when position value >= 99%
-RULE1_MIN_PRICE_BUFFER = 100  # Minimum $100 buffer between current BTC price and boundary
+# Rule 1: Emergency exit when position reaches 99%+ value
+# Immediately sell at 99% to lock in profit instead of waiting for settlement
+RULE1_EMERGENCY_EXIT_THRESHOLD = 0.99  # Trigger immediate sell when position value >= 99%
 
 
 def base_url_to_ws_url(base_url: str) -> str:
@@ -593,6 +591,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
     print(f"Position Size: {POSITION_SIZE_PCT * 100:.1f}% of balance (SAFETY MODE)")
     print(f"Entry Rule: First side whose ASK reaches >= {fmt_cents(ENTRY_TRIGGER)}")
     print(f"Exit Rule: Dynamic stop loss at {STOP_LOSS_PCT * 100:.0f}% below entry price")
+    print(f"Rule 1: Immediate sell at 99%+ to lock in profit (no settlement wait)")
     print(f"Trading Delay: Only trade when <= 12 minutes remain (after {TRADING_DELAY_MINUTES}-minute mark)")
     print(f"Sell Cooldown: {SELL_COOLDOWN_SECONDS}s wait after selling before next buy")
     print("Press Ctrl+C to stop")
@@ -611,19 +610,8 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
     rule1_exit_triggered = False  # Flag to prevent re-entry after Rule 1 emergency exit
     rule1_exit_time = None  # Store exit time when Rule 1 triggers
     rule1_exit_price = None  # Store exit price when Rule 1 triggers
-    rule1_boundary_diff = None  # Store boundary difference when Rule 1 triggers
+    rule1_boundary_diff = None  # Store boundary difference when Rule 1 triggers (legacy field)
     last_sell_time = None  # Track last sell time for cooldown period
-    
-    # Fetch market data to get floor_strike (target boundary price) for Rule 1
-    target_boundary_price = None
-    try:
-        market_data = client.get_market(market_ticker)
-        market_info = market_data.get("market", {})
-        target_boundary_price = safe_float(market_info.get("floor_strike"))
-        if target_boundary_price:
-            print(f"[Rule 1] Target boundary price: ${target_boundary_price:.2f}")
-    except Exception as e:
-        print(f"Warning: Could not fetch market floor_strike for Rule 1: {e}")
 
     async with websockets.connect(
         WS_URL,
@@ -929,50 +917,17 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                 else:
                     current_price = no_ask
                 
-                # Check if Rule 1 should trigger
-                # Wrapped in try-except to ensure bot continues normally if Rule 1 check fails
+                # Check if Rule 1 should trigger - immediately sell at 99%+
                 rule1_triggered = False
-                try:
-                    if (current_price is not None and 
-                        current_price >= RULE1_EMERGENCY_EXIT_THRESHOLD and
-                        target_boundary_price is not None):
-                        
-                        # Fetch current BTC price (expiration_value) only when position >= 99%
-                        current_btc_price = None
-                        try:
-                            market_data = client.get_market(market_ticker)
-                            market_info = market_data.get("market", {})
-                            current_btc_price = safe_float(market_info.get("expiration_value"))
-                        except Exception as e:
-                            print(f"[{now}] Warning: Could not fetch expiration_value for Rule 1: {e}")
-                            print(f"[{now}] Rule 1 check skipped - bot will continue normally")
-                        
-                        if current_btc_price is not None:
-                            # Calculate price difference between current BTC and target boundary
-                            if position.side == "yes":
-                                # For YES position: BTC should be well above boundary
-                                price_diff = current_btc_price - target_boundary_price
-                            else:
-                                # For NO position: BTC should be well below boundary
-                                price_diff = target_boundary_price - current_btc_price
-                            
-                            # If difference is less than minimum buffer, trigger emergency exit
-                            if price_diff < RULE1_MIN_PRICE_BUFFER:
-                                rule1_triggered = True
-                                # Store emergency exit details for CSV logging
-                                rule1_exit_time = now
-                                rule1_exit_price = current_price
-                                rule1_boundary_diff = price_diff
-                                print(f"\n[{now}] ⚠️  RULE 1 TRIGGERED - EMERGENCY EXIT ⚠️")
-                                print(f"Position at {fmt_cents(current_price)} (99%+) but BTC price too close to boundary!")
-                                print(f"Current BTC: ${current_btc_price:.2f} | Target: ${target_boundary_price:.2f} | Diff: ${price_diff:.2f}")
-                                print(f"Risk: Outcome could flip last minute causing 100% loss")
-                                print(f"Action: Selling immediately at {fmt_cents(current_price)}")
-                except Exception as e:
-                    # If anything fails in Rule 1 check, log error and continue normally
-                    print(f"[{now}] ERROR in Rule 1 check: {e}")
-                    print(f"[{now}] Bot will continue normally - position will settle at market close")
-                    rule1_triggered = False
+                if current_price is not None and current_price >= RULE1_EMERGENCY_EXIT_THRESHOLD:
+                    rule1_triggered = True
+                    # Store emergency exit details for CSV logging
+                    rule1_exit_time = now
+                    rule1_exit_price = current_price
+                    rule1_boundary_diff = None  # No longer checking boundary
+                    print(f"\n[{now}] ⚠️  RULE 1 TRIGGERED - EMERGENCY EXIT AT 99%+ ⚠️")
+                    print(f"Position reached {fmt_cents(current_price)} (99%+)")
+                    print(f"Action: Selling immediately to lock in profit instead of waiting for settlement")
                 
                 # Rule 1 emergency exit
                 if rule1_triggered:
