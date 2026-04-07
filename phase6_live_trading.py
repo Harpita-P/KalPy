@@ -29,7 +29,7 @@ if not API_KEY_ID or not PRIVATE_KEY_PATH or not BASE_URL:
 ENTRY_TRIGGER = 0.74  # Enter when ask >= 74 cents
 STOP_LOSS_PCT = 0.06  # Exit when price falls 6% below entry price (dynamic stop loss)
 POSITION_SIZE_PCT = 0.40  # Use 40% of account balance
-TRADING_DELAY_MINUTES = 5  # Only trade when less than 10 minutes remain (after 5-minute mark)
+TRADING_DELAY_MINUTES = 3  # Only trade when 12 minutes or less remain (after 3-minute mark)
 
 # LOSS PREVENTION RULES
 # Rule 1: Emergency exit when at 99%+ but BTC price too close to target boundary
@@ -592,7 +592,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
     print(f"Position Size: {POSITION_SIZE_PCT * 100:.1f}% of balance (SAFETY MODE)")
     print(f"Entry Rule: First side whose ASK reaches >= {fmt_cents(ENTRY_TRIGGER)}")
     print(f"Exit Rule: Dynamic stop loss at {STOP_LOSS_PCT * 100:.0f}% below entry price")
-    print(f"Trading Delay: Only trade when <= 10 minutes remain (after {TRADING_DELAY_MINUTES}-minute mark)")
+    print(f"Trading Delay: Only trade when <= 12 minutes remain (after {TRADING_DELAY_MINUTES}-minute mark)")
     print("Press Ctrl+C to stop")
     print("=" * 80 + "\n")
 
@@ -841,7 +841,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                 if not trading_allowed:
                     # Still waiting for 5-minute mark
                     if update_count % 10 == 0:  # Log every 10 updates
-                        print(f"[{now}] Waiting for trading window... {time_remaining:.1f} minutes remaining (need <= 10 min)")
+                        print(f"[{now}] Waiting for trading window... {time_remaining:.1f} minutes remaining (need <= 12 min)")
                 elif yes_ask_f is not None and yes_ask_f >= ENTRY_TRIGGER:
                     position_value_dollars = current_balance * POSITION_SIZE_PCT
                     quantity = max(1, int(position_value_dollars / yes_ask_f))
