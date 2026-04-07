@@ -29,7 +29,7 @@ if not API_KEY_ID or not PRIVATE_KEY_PATH or not BASE_URL:
 ENTRY_TRIGGER = 0.95  # Enter when ask >= 95 cents
 EXIT_TRIGGER = 0.85  # Exit when price falls to 85 cents
 POSITION_SIZE_PCT = 0.40  # Use 40% of account balance
-TRADING_DELAY_MINUTES = 3  # Only trade when 12 minutes or less remain (after 3-minute mark)
+TRADING_DELAY_MINUTES = 7  # Only trade when 8 minutes or less remain (after 7-minute mark)
 # NO COOLDOWNS - Can trade continuously
 
 # LOSS PREVENTION RULES
@@ -833,6 +833,35 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                         print(f"Remaining Balance: {fmt_dollars(current_balance)}")
                         print(">" * 80 + "\n")
                         
+                        # STRICT VALIDATION: Check if entry violates rules
+                        balance_before_trade = current_balance + cost
+                        expected_position_value = balance_before_trade * POSITION_SIZE_PCT
+                        position_value_tolerance = 0.15  # Allow 15% tolerance for rounding
+                        min_allowed = expected_position_value * (1 - position_value_tolerance)
+                        max_allowed = expected_position_value * (1 + position_value_tolerance)
+                        
+                        violations = []
+                        
+                        # Check 1: Entry price must be >= 0.92 (allowing small slippage from 0.95)
+                        if avg_fill_price < 0.92:
+                            violations.append(f"Entry price {fmt_cents(avg_fill_price)} is below minimum 92¢ (expected >= 95¢)")
+                        
+                        # Check 2: Position size must be approximately 40% of balance
+                        if cost < min_allowed or cost > max_allowed:
+                            violations.append(f"Position cost ${cost:.2f} is outside allowed range ${min_allowed:.2f}-${max_allowed:.2f} (should be ~40% of ${balance_before_trade:.2f})")
+                        
+                        if violations:
+                            print("\n" + "!" * 80)
+                            print("⛔ BOT UNEXPECTED BEHAVIOR ERROR - SHUTTING DOWN ⛔")
+                            print("!" * 80)
+                            for i, violation in enumerate(violations, 1):
+                                print(f"{i}. {violation}")
+                            print(f"\nExpected: Entry >= 95¢, Position = 40% of balance (${expected_position_value:.2f})")
+                            print(f"Actual: Entry = {fmt_cents(avg_fill_price)}, Position cost = ${cost:.2f}")
+                            print("\n⚠️  BOT SHUT DOWN - RULE VIOLATION DETECTED ⚠️")
+                            print("!" * 80 + "\n")
+                            raise RuntimeError(f"Bot rule violation detected: {'; '.join(violations)}")
+                        
                         pending_entry_order_id = None
                         pending_entry_side = None
                         pending_entry_quantity = None
@@ -870,15 +899,15 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
 
             # ENTRY LOGIC: No position and no pending order
             # Skip entry if 99¢ emergency exit was triggered (don't re-enter after emergency exit)
-            # Only trade when less than 10 minutes remain (after 5-minute mark)
+            # Only trade when 8 minutes or less remain (after 7-minute mark)
             time_remaining = (close_time - current_time).total_seconds() / 60  # minutes
-            trading_allowed = time_remaining <= (15 - TRADING_DELAY_MINUTES)  # 15 min session - 3 min delay = 12 min
+            trading_allowed = time_remaining <= (15 - TRADING_DELAY_MINUTES)  # 15 min session - 7 min delay = 8 min
             
             if position is None and pending_entry_order_id is None and not rule1_exit_triggered:
                 if not trading_allowed:
                     # Still waiting for trading window
                     if update_count % 10 == 0:  # Log every 10 updates
-                        print(f"[{now}] Waiting for trading window... {time_remaining:.1f} minutes remaining (need <= 12 min)")
+                        print(f"[{now}] Waiting for trading window... {time_remaining:.1f} minutes remaining (need <= 8 min)")
                 elif yes_ask_f is not None and yes_ask_f >= ENTRY_TRIGGER:
                     position_value_dollars = current_balance * POSITION_SIZE_PCT
                     quantity = max(1, int(position_value_dollars / yes_ask_f))
@@ -1051,6 +1080,26 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                         proceeds = avg_fill_price * total_filled
                         current_balance += proceeds
                         position.close(avg_fill_price, now, pending_exit_order_id)
+                        
+                        # STRICT VALIDATION: Check if exit violates rules
+                        violations = []
+                        
+                        # Check: If price was >= 99¢ when we placed the order, we should have sold at >= 98¢
+                        # (allowing 1¢ slippage)
+                        if rule1_triggered and avg_fill_price < 0.98:
+                            violations.append(f"Emergency exit at 99¢ was triggered but sold at {fmt_cents(avg_fill_price)} (expected >= 98¢)")
+                        
+                        if violations:
+                            print("\n" + "!" * 80)
+                            print("⛔ BOT UNEXPECTED BEHAVIOR ERROR - SHUTTING DOWN ⛔")
+                            print("!" * 80)
+                            for i, violation in enumerate(violations, 1):
+                                print(f"{i}. {violation}")
+                            print(f"\nExpected: Sell at 99¢ when emergency exit triggered")
+                            print(f"Actual: Sold at {fmt_cents(avg_fill_price)}")
+                            print("\n⚠️  BOT SHUT DOWN - RULE VIOLATION DETECTED ⚠️")
+                            print("!" * 80 + "\n")
+                            raise RuntimeError(f"Bot rule violation detected: {'; '.join(violations)}")
                         
                         # Check if sold at 99¢ or above - if so, stop trading for this session
                         if avg_fill_price >= 0.99:
