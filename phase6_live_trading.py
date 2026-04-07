@@ -391,19 +391,19 @@ def find_latest_btc15m_market(client: KalshiClient) -> str | None:
         print("No markets found for this event.")
         return None
     
-    btc15m_markets = [
+    xrp15m_markets = [
         m for m in nested_markets
-        if (m.get("event_ticker") or "").upper().startswith("KXBTC15M")
-        or (m.get("ticker") or "").upper().startswith("KXBTC15M")
+        if (m.get("event_ticker") or "").upper().startswith("KXXRP15M")
+        or (m.get("ticker") or "").upper().startswith("KXXRP15M")
     ]
     
     active_markets = [
-        m for m in btc15m_markets
+        m for m in xrp15m_markets
         if (m.get("status") or "").lower() == "active"
     ]
     
     if not active_markets:
-        print("No active BTC15M markets found.")
+        print("No active XRP15M markets found.")
         return None
     
     active_markets.sort(
