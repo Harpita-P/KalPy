@@ -853,7 +853,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                         
                         try:
                             print(f"\n[{now}] PLACING BUY ORDER: YES @ {fmt_cents(yes_ask_f)} x {quantity} contracts")
-                            print(f"Position value: {fmt_dollars(position_value_dollars)} (2% of {fmt_dollars(current_balance)})")
+                            print(f"Position value: {fmt_dollars(position_value_dollars)} (40% of {fmt_dollars(current_balance)})")
                             order_response = client.create_order(
                                 ticker=market_ticker,
                                 side="yes",
@@ -885,7 +885,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                         
                         try:
                             print(f"\n[{now}] PLACING BUY ORDER: NO @ {fmt_cents(no_ask)} x {quantity} contracts")
-                            print(f"Position value: {fmt_dollars(position_value_dollars)} (2% of {fmt_dollars(current_balance)})")
+                            print(f"Position value: {fmt_dollars(position_value_dollars)} (40% of {fmt_dollars(current_balance)})")
                             order_response = client.create_order(
                                 ticker=market_ticker,
                                 side="no",
