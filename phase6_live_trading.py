@@ -26,12 +26,11 @@ if not API_KEY_ID or not PRIVATE_KEY_PATH or not BASE_URL:
     raise ValueError("Missing environment variables. Check your .env file.")
 
 # Trading parameters - SAFETY FIRST: 2% position sizing
-ENTRY_TRIGGER = 0.74  # Enter when ask >= 74 cents
-STOP_LOSS_PCT = 0.06  # Exit when price falls 6% below entry price (dynamic stop loss)
+ENTRY_TRIGGER = 0.95  # Enter when ask >= 95 cents
+EXIT_TRIGGER = 0.85  # Exit when price falls to 85 cents
 POSITION_SIZE_PCT = 0.40  # Use 40% of account balance
 TRADING_DELAY_MINUTES = 3  # Only trade when 12 minutes or less remain (after 3-minute mark)
-SELL_COOLDOWN_SECONDS = 45  # Flat 45s cooldown between sells
-# Sell limit: Max 2 sells before 2-min mark, 3rd entry only when <2 mins remain
+# NO COOLDOWNS - Can trade continuously
 
 # LOSS PREVENTION RULES
 # Rule 1: Emergency exit when position reaches 99%+ value
@@ -591,11 +590,10 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
     print(f"Initial Balance: {fmt_dollars(initial_balance)}")
     print(f"Position Size: {POSITION_SIZE_PCT * 100:.1f}% of balance (SAFETY MODE)")
     print(f"Entry Rule: First side whose ASK reaches >= {fmt_cents(ENTRY_TRIGGER)}")
-    print(f"Exit Rule: Dynamic stop loss at {STOP_LOSS_PCT * 100:.0f}% below entry price")
-    print(f"Rule 1: Immediate sell at 99%+ to lock in profit (no settlement wait)")
+    print(f"Exit Rule: Sell when price falls to {fmt_cents(EXIT_TRIGGER)}")
+    print(f"Emergency Exit: Immediate sell at 99¢+ to lock in profit")
     print(f"Trading Delay: Only trade when <= 12 minutes remain (after {TRADING_DELAY_MINUTES}-minute mark)")
-    print(f"Sell Limit: Max 2 sells before 2-min mark, 3rd entry only when <2 mins remain")
-    print(f"Sell Cooldown: 45s between sells (NO cooldown in final 2 mins)")
+    print(f"NO COOLDOWNS - Can trade continuously")
     print("Press Ctrl+C to stop")
     print("=" * 80 + "\n")
 
@@ -611,12 +609,10 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
     pending_entry_quantity = None  # Track expected quantity for partial fill detection
     pending_entry_time = None  # Track when order was placed
     pending_exit_order_id = None
-    rule1_exit_triggered = False  # Flag to prevent re-entry after Rule 1 emergency exit
+    rule1_exit_triggered = False  # Flag to prevent re-entry after 99¢ emergency exit
     rule1_exit_time = None  # Store exit time when Rule 1 triggers
     rule1_exit_price = None  # Store exit price when Rule 1 triggers
     rule1_boundary_diff = None  # Store boundary difference when Rule 1 triggers (legacy field)
-    last_sell_time = None  # Track last sell time for cooldown period
-    sell_count = 0  # Track number of sells in this session (for max 2 sells before 2-min mark)
 
     async with websockets.connect(
         WS_URL,
@@ -873,35 +869,16 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                     print(f"Pending order: {pending_entry_order_id}")
 
             # ENTRY LOGIC: No position and no pending order
-            # Skip entry if Rule 1 emergency exit was triggered (don't re-enter after emergency exit)
+            # Skip entry if 99¢ emergency exit was triggered (don't re-enter after emergency exit)
             # Only trade when less than 10 minutes remain (after 5-minute mark)
             time_remaining = (close_time - current_time).total_seconds() / 60  # minutes
-            trading_allowed = time_remaining <= (15 - TRADING_DELAY_MINUTES)  # 15 min session - 5 min delay = 10 min
-            
-            # Check if we're in cooldown period after a sell (45s flat cooldown)
-            # BUT: No cooldown when <2 mins remain (allows rapid trading in final 2 minutes)
-            in_cooldown = False
-            if last_sell_time is not None and time_remaining > 2:
-                seconds_since_sell = (datetime.now() - last_sell_time).total_seconds()
-                in_cooldown = seconds_since_sell < SELL_COOLDOWN_SECONDS
-            
-            # Check if we've hit the sell limit (max 2 sells before 2-min mark)
-            sell_limit_reached = sell_count >= 2 and time_remaining > 2
+            trading_allowed = time_remaining <= (15 - TRADING_DELAY_MINUTES)  # 15 min session - 3 min delay = 12 min
             
             if position is None and pending_entry_order_id is None and not rule1_exit_triggered:
                 if not trading_allowed:
                     # Still waiting for trading window
                     if update_count % 10 == 0:  # Log every 10 updates
                         print(f"[{now}] Waiting for trading window... {time_remaining:.1f} minutes remaining (need <= 12 min)")
-                elif sell_limit_reached:
-                    # Hit max 2 sells - wait for <2 mins remaining
-                    if update_count % 10 == 0:  # Log every 10 updates
-                        print(f"[{now}] Max 2 sells reached - waiting for <2 mins remaining (currently {time_remaining:.1f} mins)")
-                elif in_cooldown:
-                    # In cooldown period after sell
-                    cooldown_remaining = SELL_COOLDOWN_SECONDS - seconds_since_sell
-                    if update_count % 10 == 0:  # Log every 10 updates
-                        print(f"[{now}] Cooldown active: {cooldown_remaining:.0f}s remaining (45s cooldown)")
                 elif yes_ask_f is not None and yes_ask_f >= ENTRY_TRIGGER:
                     position_value_dollars = current_balance * POSITION_SIZE_PCT
                     quantity = max(1, int(position_value_dollars / yes_ask_f))
@@ -1022,38 +999,34 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                         except Exception as e:
                             print(f"[{now}] ERROR placing emergency exit order: {e}")
                 
-                # Exit when price drops below dynamic stop loss (loss scenario)
-                # Dynamic stop loss = entry_price - (entry_price * STOP_LOSS_PCT)
-                # This means: bought at higher price, now trading at lower price
-                else:
-                    stop_loss_price = position.entry_price * (1 - STOP_LOSS_PCT)
-                    if current_price is not None and current_price <= stop_loss_price and current_price < position.entry_price:
-                        price_cents = int(current_price * 100)
-                        
-                        # CRITICAL: Ensure we sell the EXACT quantity we bought
-                        sell_quantity = position.quantity
-                        if sell_quantity <= 0:
-                            print(f"[{now}] ERROR: Invalid sell quantity {sell_quantity}! Skipping sell.")
-                        else:
-                            try:
-                                print(f"\n[{now}] STOP LOSS TRIGGERED: Entry @ {fmt_cents(position.entry_price)} | Stop @ {fmt_cents(stop_loss_price)} | Current @ {fmt_cents(current_price)}")
-                                print(f"[{now}] Selling ALL {sell_quantity} contracts (bought at {fmt_cents(position.entry_price)})")
-                                print(f"[{now}] PLACING SELL ORDER: {position.side.upper()} @ {fmt_cents(current_price)} x {sell_quantity}")
-                                order_response = client.create_order(
-                                    ticker=market_ticker,
-                                    side=position.side,
-                                    action="sell",
-                                    count=sell_quantity,
-                                    yes_price=price_cents if position.side == "yes" else None,
-                                    no_price=price_cents if position.side == "no" else None
-                                )
-                                order = order_response.get("order", {})
-                                exit_order_id = order.get("order_id")
-                                pending_exit_order_id = exit_order_id
-                                print(f"Sell order placed: {exit_order_id}")
-                                print(f"[{now}] Confirmed: Selling {sell_quantity} contracts to close position")
-                            except Exception as e:
-                                print(f"[{now}] ERROR placing sell order: {e}")
+                # Fixed exit at 85¢
+                if current_price is not None and current_price <= EXIT_TRIGGER:
+                    price_cents = int(current_price * 100)
+                    
+                    # CRITICAL: Ensure we sell the EXACT quantity we bought
+                    sell_quantity = position.quantity
+                    if sell_quantity <= 0:
+                        print(f"[{now}] ERROR: Invalid sell quantity {sell_quantity}! Skipping sell.")
+                    else:
+                        try:
+                            print(f"\n[{now}] STOP LOSS TRIGGERED: Entry @ {fmt_cents(position.entry_price)} | Exit @ {fmt_cents(EXIT_TRIGGER)} | Current @ {fmt_cents(current_price)}")
+                            print(f"[{now}] Selling ALL {sell_quantity} contracts (bought at {fmt_cents(position.entry_price)})")
+                            print(f"[{now}] PLACING SELL ORDER: {position.side.upper()} @ {fmt_cents(current_price)} x {sell_quantity}")
+                            order_response = client.create_order(
+                                ticker=market_ticker,
+                                side=position.side,
+                                action="sell",
+                                count=sell_quantity,
+                                yes_price=price_cents if position.side == "yes" else None,
+                                no_price=price_cents if position.side == "no" else None
+                            )
+                            order = order_response.get("order", {})
+                            exit_order_id = order.get("order_id")
+                            pending_exit_order_id = exit_order_id
+                            print(f"Sell order placed: {exit_order_id}")
+                            print(f"[{now}] Confirmed: Selling {sell_quantity} contracts to close position")
+                        except Exception as e:
+                            print(f"[{now}] ERROR placing sell order: {e}")
             
             # Check if pending exit order has filled
             if pending_exit_order_id and position is not None:
@@ -1079,10 +1052,6 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                         current_balance += proceeds
                         position.close(avg_fill_price, now, pending_exit_order_id)
                         
-                        # Record sell time for cooldown period and increment sell count
-                        last_sell_time = datetime.now()
-                        sell_count += 1
-                        
                         # Check if sold at 99¢ or above - if so, stop trading for this session
                         if avg_fill_price >= 0.99:
                             rule1_exit_triggered = True
@@ -1104,12 +1073,6 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                             print(f"Proceeds: {fmt_dollars(proceeds)}")
                             print(f"P&L: {fmt_dollars(position.pnl)}")
                             print(f"New Balance: {fmt_dollars(current_balance)}")
-                            
-                            # Show sell count and cooldown info
-                            time_remaining_mins = (close_time - current_time).total_seconds() / 60
-                            print(f"[{now}] Sell #{sell_count} completed - 45s cooldown activated")
-                            if sell_count >= 2 and time_remaining_mins > 2:
-                                print(f"[{now}] ⚠️  Max 2 sells reached - next entry only when <2 mins remain")
                             print("<" * 80 + "\n")
                         
                         trades_log.append(position)
