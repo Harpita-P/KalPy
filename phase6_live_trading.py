@@ -1083,20 +1083,34 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                         last_sell_time = datetime.now()
                         sell_count += 1
                         
-                        print("\n" + "<" * 80)
-                        print(f"[{now}] EXIT FILLED: SELL {position.side.upper()}")
-                        print(f"Exit Price: {fmt_cents(avg_fill_price)}")
-                        print(f"Quantity: {total_filled} contracts")
-                        print(f"Proceeds: {fmt_dollars(proceeds)}")
-                        print(f"P&L: {fmt_dollars(position.pnl)}")
-                        print(f"New Balance: {fmt_dollars(current_balance)}")
-                        
-                        # Show sell count and cooldown info
-                        time_remaining_mins = (close_time - current_time).total_seconds() / 60
-                        print(f"[{now}] Sell #{sell_count} completed - 90s cooldown activated")
-                        if sell_count >= 2 and time_remaining_mins > 2:
-                            print(f"[{now}] ⚠️  Max 2 sells reached - next entry only when <2 mins remain")
-                        print("<" * 80 + "\n")
+                        # Check if sold at 99¢ or above - if so, stop trading for this session
+                        if avg_fill_price >= 0.99:
+                            rule1_exit_triggered = True
+                            print("\n" + "<" * 80)
+                            print(f"[{now}] EXIT FILLED: SELL {position.side.upper()}")
+                            print(f"Exit Price: {fmt_cents(avg_fill_price)}")
+                            print(f"Quantity: {total_filled} contracts")
+                            print(f"Proceeds: {fmt_dollars(proceeds)}")
+                            print(f"P&L: {fmt_dollars(position.pnl)}")
+                            print(f"New Balance: {fmt_dollars(current_balance)}")
+                            print(f"\n🎯 SOLD AT 99¢+ - STOPPING TRADING FOR THIS SESSION")
+                            print(f"Waiting for market to close before next session...")
+                            print("<" * 80 + "\n")
+                        else:
+                            print("\n" + "<" * 80)
+                            print(f"[{now}] EXIT FILLED: SELL {position.side.upper()}")
+                            print(f"Exit Price: {fmt_cents(avg_fill_price)}")
+                            print(f"Quantity: {total_filled} contracts")
+                            print(f"Proceeds: {fmt_dollars(proceeds)}")
+                            print(f"P&L: {fmt_dollars(position.pnl)}")
+                            print(f"New Balance: {fmt_dollars(current_balance)}")
+                            
+                            # Show sell count and cooldown info
+                            time_remaining_mins = (close_time - current_time).total_seconds() / 60
+                            print(f"[{now}] Sell #{sell_count} completed - 90s cooldown activated")
+                            if sell_count >= 2 and time_remaining_mins > 2:
+                                print(f"[{now}] ⚠️  Max 2 sells reached - next entry only when <2 mins remain")
+                            print("<" * 80 + "\n")
                         
                         trades_log.append(position)
                         print(f"Trade #{len(trades_log)}: {position}\n")
