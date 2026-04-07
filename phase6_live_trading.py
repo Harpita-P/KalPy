@@ -1287,14 +1287,16 @@ async def main_loop():
             balance = new_balance
             print(f"Rolling over balance to next session: {fmt_dollars(balance)}")
         
+        # Session complete, all logging done - now restart for fresh state before finding next market
         print("\n" + "=" * 80)
         print("SESSION COMPLETE - RESTARTING BOT FOR FRESH START")
         print("=" * 80)
+        print("All session data logged successfully.")
         print("Shutting down current instance...")
-        print("Restarting script in 3 seconds...\n")
-        await asyncio.sleep(3)
+        print("Restarting script in 5 seconds to search for next market...\n")
+        await asyncio.sleep(5)
         
-        # Restart the script to refresh everything
+        # Restart the script to refresh everything before finding next market
         os.execv(sys.executable, [sys.executable] + sys.argv)
 
 
