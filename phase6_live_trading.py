@@ -30,7 +30,8 @@ ENTRY_TRIGGER = 0.74  # Enter when ask >= 74 cents
 STOP_LOSS_PCT = 0.06  # Exit when price falls 6% below entry price (dynamic stop loss)
 POSITION_SIZE_PCT = 0.40  # Use 40% of account balance
 TRADING_DELAY_MINUTES = 3  # Only trade when 12 minutes or less remain (after 3-minute mark)
-# Dynamic cooldown: 60s if >4 mins remain, 30s if ≤4 mins remain
+SELL_COOLDOWN_SECONDS = 30  # Flat 30s cooldown between sells
+# Sell limit: Max 2 sells before 2-min mark, 3rd entry only when <2 mins remain
 
 # LOSS PREVENTION RULES
 # Rule 1: Emergency exit when position reaches 99%+ value
@@ -593,7 +594,8 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
     print(f"Exit Rule: Dynamic stop loss at {STOP_LOSS_PCT * 100:.0f}% below entry price")
     print(f"Rule 1: Immediate sell at 99%+ to lock in profit (no settlement wait)")
     print(f"Trading Delay: Only trade when <= 12 minutes remain (after {TRADING_DELAY_MINUTES}-minute mark)")
-    print(f"Sell Cooldown: Dynamic (60s if >4 mins remain, 30s if ≤4 mins remain)")
+    print(f"Sell Limit: Max 2 sells before 2-min mark, 3rd entry only when <2 mins remain")
+    print(f"Sell Cooldown: 30s between each sell")
     print("Press Ctrl+C to stop")
     print("=" * 80 + "\n")
 
@@ -614,6 +616,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
     rule1_exit_price = None  # Store exit price when Rule 1 triggers
     rule1_boundary_diff = None  # Store boundary difference when Rule 1 triggers (legacy field)
     last_sell_time = None  # Track last sell time for cooldown period
+    sell_count = 0  # Track number of sells in this session (for max 2 sells before 2-min mark)
 
     async with websockets.connect(
         WS_URL,
@@ -875,24 +878,29 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
             time_remaining = (close_time - current_time).total_seconds() / 60  # minutes
             trading_allowed = time_remaining <= (15 - TRADING_DELAY_MINUTES)  # 15 min session - 5 min delay = 10 min
             
-            # Check if we're in cooldown period after a sell
-            # Dynamic cooldown: 60s if >4 mins remain, 30s if ≤4 mins remain
+            # Check if we're in cooldown period after a sell (30s flat cooldown)
             in_cooldown = False
             if last_sell_time is not None:
                 seconds_since_sell = (datetime.now() - last_sell_time).total_seconds()
-                cooldown_seconds = 60 if time_remaining > 4 else 30
-                in_cooldown = seconds_since_sell < cooldown_seconds
+                in_cooldown = seconds_since_sell < 30
+            
+            # Check if we've hit the sell limit (max 2 sells before 2-min mark)
+            sell_limit_reached = sell_count >= 2 and time_remaining > 2
             
             if position is None and pending_entry_order_id is None and not rule1_exit_triggered:
                 if not trading_allowed:
                     # Still waiting for trading window
                     if update_count % 10 == 0:  # Log every 10 updates
                         print(f"[{now}] Waiting for trading window... {time_remaining:.1f} minutes remaining (need <= 12 min)")
+                elif sell_limit_reached:
+                    # Hit max 2 sells - wait for <2 mins remaining
+                    if update_count % 10 == 0:  # Log every 10 updates
+                        print(f"[{now}] Max 2 sells reached - waiting for <2 mins remaining (currently {time_remaining:.1f} mins)")
                 elif in_cooldown:
                     # In cooldown period after sell
-                    cooldown_remaining = cooldown_seconds - seconds_since_sell
+                    cooldown_remaining = 30 - seconds_since_sell
                     if update_count % 10 == 0:  # Log every 10 updates
-                        print(f"[{now}] Cooldown active: {cooldown_remaining:.0f}s remaining (using {cooldown_seconds}s cooldown)")
+                        print(f"[{now}] Cooldown active: {cooldown_remaining:.0f}s remaining")
                 elif yes_ask_f is not None and yes_ask_f >= ENTRY_TRIGGER:
                     position_value_dollars = current_balance * POSITION_SIZE_PCT
                     quantity = max(1, int(position_value_dollars / yes_ask_f))
@@ -1070,8 +1078,9 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                         current_balance += proceeds
                         position.close(avg_fill_price, now, pending_exit_order_id)
                         
-                        # Record sell time for cooldown period
+                        # Record sell time for cooldown period and increment sell count
                         last_sell_time = datetime.now()
+                        sell_count += 1
                         
                         print("\n" + "<" * 80)
                         print(f"[{now}] EXIT FILLED: SELL {position.side.upper()}")
@@ -1081,10 +1090,11 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                         print(f"P&L: {fmt_dollars(position.pnl)}")
                         print(f"New Balance: {fmt_dollars(current_balance)}")
                         
-                        # Calculate dynamic cooldown based on time remaining
+                        # Show sell count and cooldown info
                         time_remaining_mins = (close_time - current_time).total_seconds() / 60
-                        cooldown_seconds = 60 if time_remaining_mins > 4 else 30
-                        print(f"[{now}] Cooldown activated: {cooldown_seconds}s (time remaining: {time_remaining_mins:.1f} mins)")
+                        print(f"[{now}] Sell #{sell_count} completed - 30s cooldown activated")
+                        if sell_count >= 2 and time_remaining_mins > 2:
+                            print(f"[{now}] ⚠️  Max 2 sells reached - next entry only when <2 mins remain")
                         print("<" * 80 + "\n")
                         
                         trades_log.append(position)
