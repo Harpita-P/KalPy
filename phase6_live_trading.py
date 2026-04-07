@@ -30,7 +30,7 @@ ENTRY_TRIGGER = 0.74  # Enter when ask >= 74 cents
 STOP_LOSS_PCT = 0.06  # Exit when price falls 6% below entry price (dynamic stop loss)
 POSITION_SIZE_PCT = 0.40  # Use 40% of account balance
 TRADING_DELAY_MINUTES = 3  # Only trade when 12 minutes or less remain (after 3-minute mark)
-SELL_COOLDOWN_SECONDS = 90  # Flat 90s (1min 30s) cooldown between sells
+SELL_COOLDOWN_SECONDS = 45  # Flat 45s cooldown between sells
 # Sell limit: Max 2 sells before 2-min mark, 3rd entry only when <2 mins remain
 
 # LOSS PREVENTION RULES
@@ -595,7 +595,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
     print(f"Rule 1: Immediate sell at 99%+ to lock in profit (no settlement wait)")
     print(f"Trading Delay: Only trade when <= 12 minutes remain (after {TRADING_DELAY_MINUTES}-minute mark)")
     print(f"Sell Limit: Max 2 sells before 2-min mark, 3rd entry only when <2 mins remain")
-    print(f"Sell Cooldown: 90s (1min 30s) between sells (NO cooldown in final 2 mins)")
+    print(f"Sell Cooldown: 45s between sells (NO cooldown in final 2 mins)")
     print("Press Ctrl+C to stop")
     print("=" * 80 + "\n")
 
@@ -878,7 +878,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
             time_remaining = (close_time - current_time).total_seconds() / 60  # minutes
             trading_allowed = time_remaining <= (15 - TRADING_DELAY_MINUTES)  # 15 min session - 5 min delay = 10 min
             
-            # Check if we're in cooldown period after a sell (90s flat cooldown)
+            # Check if we're in cooldown period after a sell (45s flat cooldown)
             # BUT: No cooldown when <2 mins remain (allows rapid trading in final 2 minutes)
             in_cooldown = False
             if last_sell_time is not None and time_remaining > 2:
@@ -901,7 +901,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                     # In cooldown period after sell
                     cooldown_remaining = SELL_COOLDOWN_SECONDS - seconds_since_sell
                     if update_count % 10 == 0:  # Log every 10 updates
-                        print(f"[{now}] Cooldown active: {cooldown_remaining:.0f}s remaining (90s cooldown)")
+                        print(f"[{now}] Cooldown active: {cooldown_remaining:.0f}s remaining (45s cooldown)")
                 elif yes_ask_f is not None and yes_ask_f >= ENTRY_TRIGGER:
                     position_value_dollars = current_balance * POSITION_SIZE_PCT
                     quantity = max(1, int(position_value_dollars / yes_ask_f))
@@ -1107,7 +1107,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                             
                             # Show sell count and cooldown info
                             time_remaining_mins = (close_time - current_time).total_seconds() / 60
-                            print(f"[{now}] Sell #{sell_count} completed - 90s cooldown activated")
+                            print(f"[{now}] Sell #{sell_count} completed - 45s cooldown activated")
                             if sell_count >= 2 and time_remaining_mins > 2:
                                 print(f"[{now}] ⚠️  Max 2 sells reached - next entry only when <2 mins remain")
                             print("<" * 80 + "\n")
