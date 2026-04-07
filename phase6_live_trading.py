@@ -964,25 +964,32 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                 if rule1_triggered:
                     price_cents = int(current_price * 100)
                     
-                    try:
-                        print(f"\n[{now}] PLACING EMERGENCY SELL ORDER: {position.side.upper()} @ {fmt_cents(current_price)} x {position.quantity}")
-                        order_response = client.create_order(
-                            ticker=market_ticker,
-                            side=position.side,
-                            action="sell",
-                            count=position.quantity,
-                            yes_price=price_cents if position.side == "yes" else None,
-                            no_price=price_cents if position.side == "no" else None
-                        )
-                        order = order_response.get("order", {})
-                        exit_order_id = order.get("order_id")
-                        pending_exit_order_id = exit_order_id
-                        rule1_exit_triggered = True  # Set flag to prevent re-entry
-                        print(f"Emergency exit order placed: {exit_order_id}")
-                        print(f"[Rule 1] Re-entry disabled for this session")
-                            
-                    except Exception as e:
-                        print(f"[{now}] ERROR placing emergency exit order: {e}")
+                    # CRITICAL: Ensure we sell the EXACT quantity we bought
+                    sell_quantity = position.quantity
+                    if sell_quantity <= 0:
+                        print(f"[{now}] ERROR: Invalid sell quantity {sell_quantity}! Skipping sell.")
+                    else:
+                        try:
+                            print(f"\n[{now}] ⚠️  RULE 1 EMERGENCY EXIT ⚠️")
+                            print(f"[{now}] Selling ALL {sell_quantity} contracts (bought at {fmt_cents(position.entry_price)})")
+                            print(f"[{now}] PLACING EMERGENCY SELL ORDER: {position.side.upper()} @ {fmt_cents(current_price)} x {sell_quantity}")
+                            order_response = client.create_order(
+                                ticker=market_ticker,
+                                side=position.side,
+                                action="sell",
+                                count=sell_quantity,
+                                yes_price=price_cents if position.side == "yes" else None,
+                                no_price=price_cents if position.side == "no" else None
+                            )
+                            order = order_response.get("order", {})
+                            exit_order_id = order.get("order_id")
+                            pending_exit_order_id = exit_order_id
+                            rule1_exit_triggered = True  # Set flag to prevent re-entry
+                            print(f"Emergency exit order placed: {exit_order_id}")
+                            print(f"[Rule 1] Re-entry disabled for this session")
+                                
+                        except Exception as e:
+                            print(f"[{now}] ERROR placing emergency exit order: {e}")
                 
                 # Exit when price drops below dynamic stop loss (loss scenario)
                 # Dynamic stop loss = entry_price - (entry_price * STOP_LOSS_PCT)
@@ -992,23 +999,30 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                     if current_price is not None and current_price <= stop_loss_price and current_price < position.entry_price:
                         price_cents = int(current_price * 100)
                         
-                        try:
-                            print(f"\n[{now}] STOP LOSS TRIGGERED: Entry @ {fmt_cents(position.entry_price)} | Stop @ {fmt_cents(stop_loss_price)} | Current @ {fmt_cents(current_price)}")
-                            print(f"[{now}] PLACING SELL ORDER: {position.side.upper()} @ {fmt_cents(current_price)} x {position.quantity}")
-                            order_response = client.create_order(
-                                ticker=market_ticker,
-                                side=position.side,
-                                action="sell",
-                                count=position.quantity,
-                                yes_price=price_cents if position.side == "yes" else None,
-                                no_price=price_cents if position.side == "no" else None
-                            )
-                            order = order_response.get("order", {})
-                            exit_order_id = order.get("order_id")
-                            pending_exit_order_id = exit_order_id
-                            print(f"Sell order placed: {exit_order_id}")
-                        except Exception as e:
-                            print(f"[{now}] ERROR placing sell order: {e}")
+                        # CRITICAL: Ensure we sell the EXACT quantity we bought
+                        sell_quantity = position.quantity
+                        if sell_quantity <= 0:
+                            print(f"[{now}] ERROR: Invalid sell quantity {sell_quantity}! Skipping sell.")
+                        else:
+                            try:
+                                print(f"\n[{now}] STOP LOSS TRIGGERED: Entry @ {fmt_cents(position.entry_price)} | Stop @ {fmt_cents(stop_loss_price)} | Current @ {fmt_cents(current_price)}")
+                                print(f"[{now}] Selling ALL {sell_quantity} contracts (bought at {fmt_cents(position.entry_price)})")
+                                print(f"[{now}] PLACING SELL ORDER: {position.side.upper()} @ {fmt_cents(current_price)} x {sell_quantity}")
+                                order_response = client.create_order(
+                                    ticker=market_ticker,
+                                    side=position.side,
+                                    action="sell",
+                                    count=sell_quantity,
+                                    yes_price=price_cents if position.side == "yes" else None,
+                                    no_price=price_cents if position.side == "no" else None
+                                )
+                                order = order_response.get("order", {})
+                                exit_order_id = order.get("order_id")
+                                pending_exit_order_id = exit_order_id
+                                print(f"Sell order placed: {exit_order_id}")
+                                print(f"[{now}] Confirmed: Selling {sell_quantity} contracts to close position")
+                            except Exception as e:
+                                print(f"[{now}] ERROR placing sell order: {e}")
             
             # Check if pending exit order has filled
             if pending_exit_order_id and position is not None:
