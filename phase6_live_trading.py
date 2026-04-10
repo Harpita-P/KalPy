@@ -5,7 +5,7 @@ import json
 import os
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -27,11 +27,13 @@ if not API_KEY_ID or not PRIVATE_KEY_PATH or not BASE_URL:
     raise ValueError("Missing environment variables. Check your .env file.")
 
 # Trading parameters - SAFETY FIRST: 2% position sizing
-ENTRY_TRIGGER = 0.95  # Enter when ask >= 95 cents
+ENTRY_TRIGGER = 0.98  # Enter when ask >= 98 cents
 EXIT_TRIGGER = 0.88  # Exit when price falls to 88 cents
 POSITION_SIZE_PCT = 0.40  # Use 40% of account balance
-TRADING_DELAY_MINUTES = 7  # Only trade when 8 minutes or less remain (after 7-minute mark)
-MINIMUM_ACCOUNT_BALANCE = 80.00  # Minimum balance required to continue trading
+TRADING_DELAY_MINUTES = 8  # Only trade when 8 minutes or less remain
+MINIMUM_ACCOUNT_BALANCE = 50.00  # Minimum balance required to continue trading
+PRINT_TICK_UPDATES = False
+ENTRY_ORDER_TIMEOUT_SECONDS = 60
 # NO COOLDOWNS - Can trade continuously
 
 # LOSS PREVENTION RULES
@@ -571,10 +573,12 @@ def print_session_summary(session_number: int, market_ticker: str, session_start
 
 
 async def run_live_trading(client: KalshiClient, market_ticker: str, initial_balance: float, session_number: int):
-    headers = client.ws_auth_headers()
+    async def _to_thread(func, *args, **kwargs):
+        return await asyncio.to_thread(func, *args, **kwargs)
+
     session_start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
-    market_data = client.get_market(market_ticker)
+    market_data = await _to_thread(client.get_market, market_ticker)
     market_info = market_data.get("market", {})
     close_time_str = market_info.get("close_time")
     
@@ -608,7 +612,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
     print(f"Entry Rule: First side whose ASK reaches >= {fmt_cents(ENTRY_TRIGGER)}")
     print(f"Exit Rule: Sell when price falls to {fmt_cents(EXIT_TRIGGER)}")
     print(f"Emergency Exit: Immediate sell at 99¢+ to lock in profit")
-    print(f"Trading Delay: Only trade when <= 12 minutes remain (after {TRADING_DELAY_MINUTES}-minute mark)")
+    print(f"Trading Delay: Only trade when <= {TRADING_DELAY_MINUTES} minutes remain")
     print(f"NO COOLDOWNS - Can trade continuously")
     print("Press Ctrl+C to stop")
     print("=" * 80 + "\n")
@@ -620,6 +624,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
     update_count = 0
     trades_log = []
     outcome = "No trades"
+    session_end_time = None  # Initialize to prevent UnboundLocalError
     pending_entry_order_id = None
     pending_entry_side = None
     pending_entry_quantity = None  # Track expected quantity for partial fill detection
@@ -636,6 +641,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
     
     while retry_count < max_retries:
         try:
+            headers = client.ws_auth_headers()
             async with websockets.connect(
                 WS_URL,
                 additional_headers=headers,
@@ -660,7 +666,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                         print(f"\n⚠️  Checking pending exit order after reconnection: {pending_exit_order_id}")
                         try:
                             await asyncio.sleep(2)  # Wait for fills to be reported
-                            fills_response = client.get_fills(ticker=market_ticker, limit=20)
+                            fills_response = await _to_thread(client.get_fills, ticker=market_ticker, limit=20)
                             fills = fills_response.get("fills", [])
                             
                             total_filled = 0
@@ -698,548 +704,106 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                         except Exception as e:
                             print(f"❌ Error checking pending exit order: {e}\n")
 
+                subscribed_printed = False
+
                 async for raw_message in ws:
-            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            try:
-                data = json.loads(raw_message)
-            except json.JSONDecodeError:
-                print(f"[{now}] Non-JSON message received: {raw_message}")
-                continue
-
-            msg_type = data.get("type")
-
-            if msg_type == "subscribed":
-                print(f"[{now}] Subscription confirmed.")
-                continue
-
-            if msg_type == "error":
-                print(f"[{now}] WebSocket error: {data}")
-                continue
-
-            if msg_type != "ticker":
-                continue
-
-            msg = data.get("msg", {})
-            ticker = msg.get("market_ticker")
-
-            if ticker != market_ticker:
-                continue
-
-            update_count += 1
-
-            yes_bid = msg.get("yes_bid_dollars")
-            yes_ask = msg.get("yes_ask_dollars")
-
-            yes_bid_f = safe_float(yes_bid)
-            yes_ask_f = safe_float(yes_ask)
-
-            no_bid = (1.0 - yes_ask_f) if yes_ask_f is not None else None
-            no_ask = (1.0 - yes_bid_f) if yes_bid_f is not None else None
-
-            current_time = datetime.now(close_time.tzinfo)
-            market_closed = current_time >= close_time
-
-            if market_closed:
-                session_end_time = now
-                print(f"\n[{now}] Market {market_ticker} has CLOSED (reached close time)")
-                
-                if position:
-                    await asyncio.sleep(2)
-                    
                     try:
-                        final_market = client.get_market(market_ticker)
-                        final_info = final_market.get("market", {})
-                        result = final_info.get("result")
-                        
-                        if result == "yes":
-                            winner = "YES"
-                            settlement_price = 1.0 if position.side == "yes" else 0.0
-                        elif result == "no":
-                            winner = "NO"
-                            settlement_price = 0.0 if position.side == "yes" else 1.0
-                        else:
-                            print(f"Warning: Market result not yet available, using last prices")
-                            if yes_ask_f and yes_ask_f >= 0.99:
-                                winner = "YES"
-                                settlement_price = 1.0 if position.side == "yes" else 0.0
-                            else:
-                                winner = "NO"
-                                settlement_price = 0.0 if position.side == "yes" else 1.0
-                    except Exception as e:
-                        print(f"Error fetching final result: {e}")
-                        if yes_ask_f and yes_ask_f >= 0.99:
-                            winner = "YES"
-                            settlement_price = 1.0 if position.side == "yes" else 0.0
-                        else:
-                            winner = "NO"
-                            settlement_price = 0.0 if position.side == "yes" else 1.0
-                    
-                    proceeds = settlement_price * position.quantity
-                    current_balance += proceeds
-                    position.close(settlement_price, now)
-                    
-                    print(f"Market settled: {winner} won")
-                    print(f"Position closed at settlement: {position.side.upper()} @ {fmt_cents(settlement_price)}")
-                    print(f"Proceeds: {fmt_dollars(proceeds)}")
-                    print(f"P&L: {fmt_dollars(position.pnl)}")
-                    
-                    trades_log.append(position)
-                    
-                    if position.side.upper() == winner:
-                        outcome = f"Held {position.side.upper()} to close - WON"
-                    else:
-                        outcome = f"Held {position.side.upper()} to close - LOST"
-                    
-                    # Log to CSV
-                    trade_cost = position.entry_price * position.quantity
-                    trade_pnl_pct = (position.pnl / trade_cost) * 100 if trade_cost > 0 else 0
-                    session_pnl_pct = ((current_balance - session_start_balance) / session_start_balance) * 100 if session_start_balance > 0 else 0
-                    log_trade_to_csv(
-                        session_info={
-                            "session_number": session_number,
-                            "session_start_time": session_start_time,
-                            "session_end_time": now,
-                            "market_ticker": market_ticker,
-                            "starting_balance": session_start_balance,
-                            "ending_balance": current_balance,
-                            "session_pnl": current_balance - session_start_balance,
-                            "session_pnl_percent": session_pnl_pct
-                        },
-                        trade_info={
-                            "trade_number": len(trades_log),
-                            "side": position.side,
-                            "buy_time": position.entry_time,
-                            "buy_price": position.entry_price,
-                            "buy_quantity": position.quantity,
-                            "buy_cost": position.entry_price * position.quantity,
-                            "buy_order_id": position.entry_order_id,
-                            "sold": True,
-                            "sell_time": position.exit_time,
-                            "sell_price": position.exit_price,
-                            "sell_quantity": position.quantity,
-                            "sell_proceeds": proceeds,
-                            "sell_order_id": position.exit_order_id if position.exit_order_id else None,
-                            "exit_type": "SETTLEMENT",
-                            "trade_pnl": position.pnl,
-                            "trade_pnl_percent": trade_pnl_pct,
-                            "emergency_exit": False,
-                            "emergency_exit_time": "",
-                            "emergency_exit_price": "",
-                            "boundary_difference": "",
-                            "market_outcome": winner
-                        }
-                    )
-                else:
-                    outcome = "No position at close"
-                
-                print_session_summary(session_number, market_ticker, session_start_time, session_end_time,
-                                    session_start_balance, current_balance, None, trades_log, outcome)
-                
-                return current_balance
+                        data = json.loads(raw_message)
+                    except json.JSONDecodeError:
+                        continue
 
-            # Check if pending order has filled
-            if pending_entry_order_id and position is None:
-                try:
-                    fills_response = client.get_fills(ticker=market_ticker, limit=20)
-                    fills = fills_response.get("fills", [])
-                    
-                    # Debug: Show fills on first few checks
-                    if update_count % 10 == 0 and fills:
-                        print(f"DEBUG: Checking {len(fills)} fills for order {pending_entry_order_id}")
-                        if fills:
-                            first_fill = fills[0]
-                            print(f"DEBUG: First fill order_id: {first_fill.get('order_id')}")
-                            print(f"DEBUG: Expected order_id: {pending_entry_order_id}")
-                            print(f"DEBUG: Match: {first_fill.get('order_id') == pending_entry_order_id}")
-                    
-                    total_filled = 0
-                    avg_fill_price = 0
-                    for fill in fills:
-                        if fill.get("order_id") == pending_entry_order_id:
-                            # Kalshi API returns: count_fp (string), yes_price_dollars/no_price_dollars (string in dollars)
-                            count = int(float(fill.get("count_fp", "0")))
-                            total_filled += count
-                            if pending_entry_side == "yes":
-                                price_dollars = fill.get("yes_price_dollars", "0")
-                                avg_fill_price = safe_float(price_dollars)
-                            else:
-                                price_dollars = fill.get("no_price_dollars", "0")
-                                avg_fill_price = safe_float(price_dollars)
-                    
-                    # Check if order is partially filled or taking too long
-                    time_since_order = (datetime.now() - pending_entry_time).total_seconds() if pending_entry_time else 0
-                    
-                    if total_filled > 0 and total_filled < pending_entry_quantity:
-                        # PARTIAL FILL DETECTED - Cancel the order
-                        print(f"\n[{now}] ⚠️  PARTIAL FILL DETECTED ⚠️")
-                        print(f"Expected: {pending_entry_quantity} contracts | Filled: {total_filled} contracts")
-                        print(f"Canceling order and rejecting partial fill...")
-                        
-                        try:
-                            # Cancel the remaining order
-                            client.delete(f"/portfolio/orders/{pending_entry_order_id}", auth=True)
-                            print(f"Order {pending_entry_order_id} canceled successfully")
-                        except Exception as cancel_error:
-                            print(f"Warning: Could not cancel order: {cancel_error}")
-                        
-                        # Refund the partial fill cost
-                        refund = avg_fill_price * total_filled
-                        current_balance += refund
-                        print(f"Refunded {fmt_dollars(refund)} from partial fill")
-                        print(f"No position created - waiting for next opportunity\n")
-                        
-                        pending_entry_order_id = None
-                        pending_entry_side = None
-                        pending_entry_quantity = None
-                        pending_entry_time = None
-                        
-                    elif total_filled > 0 and total_filled == pending_entry_quantity:
-                        # FULL FILL - Create position
-                        position = LivePosition(pending_entry_side, avg_fill_price, total_filled, now, pending_entry_order_id)
-                        cost = avg_fill_price * total_filled
-                        current_balance -= cost
-                        
-                        print("\n" + ">" * 80)
-                        print(f"[{now}] ENTRY FILLED: BUY {pending_entry_side.upper()}")
-                        print(f"Entry Price: {fmt_cents(avg_fill_price)}")
-                        print(f"Quantity: {total_filled} contracts (FULL FILL)")
-                        print(f"Cost: {fmt_dollars(cost)}")
-                        print(f"Remaining Balance: {fmt_dollars(current_balance)}")
-                        print(">" * 80 + "\n")
-                        
-                        # STRICT VALIDATION: Check if entry violates rules
-                        balance_before_trade = current_balance + cost
-                        expected_position_value = balance_before_trade * POSITION_SIZE_PCT
-                        position_value_tolerance = 0.15  # Allow 15% tolerance for rounding
-                        min_allowed = expected_position_value * (1 - position_value_tolerance)
-                        max_allowed = expected_position_value * (1 + position_value_tolerance)
-                        
-                        violations = []
-                        
-                        # Check 1: Entry price must be >= 0.92 (allowing small slippage from 0.95)
-                        if avg_fill_price < 0.92:
-                            violations.append(f"Entry price {fmt_cents(avg_fill_price)} is below minimum 92¢ (expected >= 95¢)")
-                        
-                        # Check 2: Position size must be approximately 40% of balance
-                        if cost < min_allowed or cost > max_allowed:
-                            violations.append(f"Position cost ${cost:.2f} is outside allowed range ${min_allowed:.2f}-${max_allowed:.2f} (should be ~40% of ${balance_before_trade:.2f})")
-                        
-                        if violations:
-                            print("\n" + "!" * 80)
-                            print("⛔ BOT UNEXPECTED BEHAVIOR ERROR - SHUTTING DOWN ⛔")
-                            print("!" * 80)
-                            for i, violation in enumerate(violations, 1):
-                                print(f"{i}. {violation}")
-                            print(f"\nExpected: Entry >= 95¢, Position = 40% of balance (${expected_position_value:.2f})")
-                            print(f"Actual: Entry = {fmt_cents(avg_fill_price)}, Position cost = ${cost:.2f}")
-                            print("\n⚠️  BOT SHUT DOWN - RULE VIOLATION DETECTED ⚠️")
-                            print("!" * 80 + "\n")
-                            raise RuntimeError(f"Bot rule violation detected: {'; '.join(violations)}")
-                        
-                        pending_entry_order_id = None
-                        pending_entry_side = None
-                        pending_entry_quantity = None
-                        pending_entry_time = None
-                        
-                    elif total_filled == 0 and time_since_order > 10:
-                        # NO FILL after 10 seconds - Cancel order
-                        print(f"\n[{now}] Order not filled after 10 seconds - canceling...")
-                        try:
-                            client.delete(f"/portfolio/orders/{pending_entry_order_id}", auth=True)
-                            print(f"Order {pending_entry_order_id} canceled")
-                        except Exception as cancel_error:
-                            print(f"Warning: Could not cancel order: {cancel_error}")
-                        
-                        pending_entry_order_id = None
-                        pending_entry_side = None
-                        pending_entry_quantity = None
-                        pending_entry_time = None
-                        
-                except Exception as e:
-                    print(f"DEBUG: Error checking fills: {e}")
+                    msg_type = data.get("type")
 
-            changed = (yes_ask != last_yes_ask) or update_count <= 3
-            if changed:
-                print("-" * 80)
-                print(f"[{now}] Update #{update_count} | Balance: {fmt_dollars(current_balance)}")
-                print(f"YES bid/ask: {fmt_cents(yes_bid_f)} / {fmt_cents(yes_ask_f)}")
-                print(f"NO  bid/ask: {fmt_cents(no_bid)} / {fmt_cents(no_ask)}")
-                if position:
-                    current_price = yes_ask_f if position.side == "yes" else no_ask
-                    unrealized_pnl = (current_price - position.entry_price) * position.quantity if current_price else 0
-                    print(f"Position: {position.side.upper()} @ {fmt_cents(position.entry_price)} x {position.quantity} | Unrealized P&L: {fmt_dollars(unrealized_pnl)}")
-                elif pending_entry_order_id:
-                    print(f"Pending order: {pending_entry_order_id}")
+                    if msg_type == "subscribed":
+                        if not subscribed_printed:
+                            print(f"[{now}] Subscription confirmed.")
+                            subscribed_printed = True
+                        continue
 
-            # ENTRY LOGIC: No position and no pending order
-            # Skip entry if 99¢ emergency exit was triggered (don't re-enter after emergency exit)
-            # Only trade when 8 minutes or less remain (after 7-minute mark)
-            time_remaining = (close_time - current_time).total_seconds() / 60  # minutes
-            trading_allowed = time_remaining <= (15 - TRADING_DELAY_MINUTES)  # 15 min session - 7 min delay = 8 min
-            
-            if position is None and pending_entry_order_id is None and not rule1_exit_triggered:
-                if not trading_allowed:
-                    # Still waiting for trading window
-                    if update_count % 10 == 0:  # Log every 10 updates
-                        print(f"[{now}] Waiting for trading window... {time_remaining:.1f} minutes remaining (need <= 8 min)")
-                elif yes_ask_f is not None and yes_ask_f >= ENTRY_TRIGGER:
-                    position_value_dollars = current_balance * POSITION_SIZE_PCT
-                    quantity = max(1, int(position_value_dollars / yes_ask_f))
-                    
-                    if quantity > 0:
-                        yes_price_cents = int(yes_ask_f * 100)
+                    if msg_type == "error":
+                        print(f"[{now}] WebSocket error: {data}")
+                        continue
+
+                    if msg_type != "ticker":
+                        continue
+
+                    msg = data.get("msg", {})
+                    ticker = msg.get("market_ticker")
+                    if ticker != market_ticker:
+                        continue
+
+                    update_count += 1
+
+                    yes_bid = msg.get("yes_bid_dollars")
+                    yes_ask = msg.get("yes_ask_dollars")
+
+                    yes_bid_f = safe_float(yes_bid)
+                    yes_ask_f = safe_float(yes_ask)
+
+                    no_bid = (1.0 - yes_ask_f) if yes_ask_f is not None else None
+                    no_ask = (1.0 - yes_bid_f) if yes_bid_f is not None else None
+
+                    current_time = datetime.now(timezone.utc)
+                    market_closed = current_time >= close_time
+
+                    if market_closed:
+                        session_end_time = now
+                        print(f"\n[{now}] Market {market_ticker} has CLOSED (reached close time)")
                         
-                        try:
-                            print(f"\n[{now}] PLACING BUY ORDER: YES @ {fmt_cents(yes_ask_f)} x {quantity} contracts")
-                            print(f"Position value: {fmt_dollars(position_value_dollars)} (40% of {fmt_dollars(current_balance)})")
-                            order_response = client.create_order(
-                                ticker=market_ticker,
-                                side="yes",
-                                action="buy",
-                                count=quantity,
-                                yes_price=yes_price_cents
-                            )
-                            order = order_response.get("order", {})
-                            order_id = order.get("order_id")
-                            pending_entry_order_id = order_id
-                            pending_entry_side = "yes"
-                            pending_entry_quantity = quantity
-                            pending_entry_time = datetime.now()
-                            print(f"Order placed: {order_id}")
+                        if position:
+                            await asyncio.sleep(2)
+                            
+                            try:
+                                final_market = client.get_market(market_ticker)
+                                final_info = final_market.get("market", {})
+                                result = final_info.get("result")
                                 
-                        except Exception as e:
-                            print(f"[{now}] ERROR placing order: {e}")
-                            if hasattr(e, 'response') and e.response is not None:
-                                try:
-                                    error_detail = e.response.json()
-                                    print(f"API Error Details: {error_detail}")
-                                except:
-                                    pass
-
-                elif no_ask is not None and no_ask >= ENTRY_TRIGGER:
-                    position_value_dollars = current_balance * POSITION_SIZE_PCT
-                    quantity = max(1, int(position_value_dollars / no_ask))
-                    
-                    if quantity > 0:
-                        no_price_cents = int(no_ask * 100)
-                        
-                        try:
-                            print(f"\n[{now}] PLACING BUY ORDER: NO @ {fmt_cents(no_ask)} x {quantity} contracts")
-                            print(f"Position value: {fmt_dollars(position_value_dollars)} (40% of {fmt_dollars(current_balance)})")
-                            order_response = client.create_order(
-                                ticker=market_ticker,
-                                side="no",
-                                action="buy",
-                                count=quantity,
-                                no_price=no_price_cents
-                            )
-                            order = order_response.get("order", {})
-                            order_id = order.get("order_id")
-                            pending_entry_order_id = order_id
-                            pending_entry_side = "no"
-                            pending_entry_quantity = quantity
-                            pending_entry_time = datetime.now()
-                            print(f"Order placed: {order_id}")
-                                
-                        except Exception as e:
-                            print(f"[{now}] ERROR placing order: {e}")
-                            if hasattr(e, 'response') and e.response is not None:
-                                try:
-                                    error_detail = e.response.json()
-                                    print(f"API Error Details: {error_detail}")
-                                except:
-                                    pass
-
-            # RULE 1: Emergency exit when at 99%+ but BTC price too close to target boundary
-            # This prevents rare settlement loss scenarios where outcome flips last minute
-            elif position is not None and pending_exit_order_id is None:
-                # Determine current position value
-                if position.side == "yes":
-                    current_price = yes_ask_f
-                else:
-                    current_price = no_ask
-                
-                # Check if Rule 1 should trigger - immediately sell at 99%+
-                rule1_triggered = False
-                if current_price is not None and current_price >= RULE1_EMERGENCY_EXIT_THRESHOLD:
-                    rule1_triggered = True
-                    # Store emergency exit details for CSV logging
-                    rule1_exit_time = now
-                    rule1_exit_price = current_price
-                    rule1_boundary_diff = None  # No longer checking boundary
-                    print(f"\n[{now}] ⚠️  RULE 1 TRIGGERED - EMERGENCY EXIT AT 99%+ ⚠️")
-                    print(f"Position reached {fmt_cents(current_price)} (99%+)")
-                    print(f"Action: Selling immediately to lock in profit instead of waiting for settlement")
-                
-                # Rule 1 emergency exit
-                if rule1_triggered:
-                    price_cents = int(current_price * 100)
-                    
-                    # CRITICAL: Ensure we sell the EXACT quantity we bought
-                    sell_quantity = position.quantity
-                    if sell_quantity <= 0:
-                        print(f"[{now}] ERROR: Invalid sell quantity {sell_quantity}! Skipping sell.")
-                    else:
-                        try:
-                            print(f"\n[{now}] ⚠️  RULE 1 EMERGENCY EXIT ⚠️")
-                            print(f"[{now}] Selling ALL {sell_quantity} contracts (bought at {fmt_cents(position.entry_price)})")
-                            print(f"[{now}] PLACING EMERGENCY SELL ORDER: {position.side.upper()} @ {fmt_cents(current_price)} x {sell_quantity}")
-                            order_response = client.create_order(
-                                ticker=market_ticker,
-                                side=position.side,
-                                action="sell",
-                                count=sell_quantity,
-                                yes_price=price_cents if position.side == "yes" else None,
-                                no_price=price_cents if position.side == "no" else None
-                            )
-                            order = order_response.get("order", {})
-                            exit_order_id = order.get("order_id")
-                            pending_exit_order_id = exit_order_id
-                            rule1_exit_triggered = True  # Set flag to prevent re-entry
-                            print(f"Emergency exit order placed: {exit_order_id}")
-                            print(f"[Rule 1] Re-entry disabled for this session")
-                                
-                        except Exception as e:
-                            print(f"[{now}] ERROR placing emergency exit order: {e}")
-                
-                # Fixed exit at 85¢
-                if current_price is not None and current_price <= EXIT_TRIGGER:
-                    price_cents = int(current_price * 100)
-                    
-                    # CRITICAL: Ensure we sell the EXACT quantity we bought
-                    sell_quantity = position.quantity
-                    if sell_quantity <= 0:
-                        print(f"[{now}] ERROR: Invalid sell quantity {sell_quantity}! Skipping sell.")
-                    else:
-                        try:
-                            print(f"\n[{now}] STOP LOSS TRIGGERED: Entry @ {fmt_cents(position.entry_price)} | Exit @ {fmt_cents(EXIT_TRIGGER)} | Current @ {fmt_cents(current_price)}")
-                            print(f"[{now}] Selling ALL {sell_quantity} contracts (bought at {fmt_cents(position.entry_price)})")
-                            print(f"[{now}] PLACING SELL ORDER: {position.side.upper()} @ {fmt_cents(current_price)} x {sell_quantity}")
-                            order_response = client.create_order(
-                                ticker=market_ticker,
-                                side=position.side,
-                                action="sell",
-                                count=sell_quantity,
-                                yes_price=price_cents if position.side == "yes" else None,
-                                no_price=price_cents if position.side == "no" else None
-                            )
-                            order = order_response.get("order", {})
-                            exit_order_id = order.get("order_id")
-                            pending_exit_order_id = exit_order_id
-                            print(f"Sell order placed: {exit_order_id}")
-                            print(f"[{now}] Confirmed: Selling {sell_quantity} contracts to close position")
-                        except Exception as e:
-                            print(f"[{now}] ERROR placing sell order: {e}")
-            
-            # Check if pending exit order has filled
-            if pending_exit_order_id and position is not None:
-                try:
-                    # Wait 2 seconds to ensure all fills are reported
-                    await asyncio.sleep(2)
-                    
-                    fills_response = client.get_fills(ticker=market_ticker, limit=20)
-                    fills = fills_response.get("fills", [])
-                    
-                    total_filled = 0
-                    avg_fill_price = 0
-                    fill_prices = []
-                    for fill in fills:
-                        if fill.get("order_id") == pending_exit_order_id:
-                            count = int(float(fill.get("count_fp", "0")))
-                            total_filled += count
-                            if position.side == "yes":
-                                price_dollars = fill.get("yes_price_dollars", "0")
-                                fill_price = safe_float(price_dollars)
-                            else:
-                                price_dollars = fill.get("no_price_dollars", "0")
-                                fill_price = safe_float(price_dollars)
-                            fill_prices.append(fill_price)
-                    
-                    # Calculate weighted average fill price
-                    if fill_prices:
-                        avg_fill_price = sum(fill_prices) / len(fill_prices)
-                    
-                    if total_filled > 0 and total_filled < position.quantity:
-                        # PARTIAL FILL ON EXIT - This is a critical error
-                        print("\n" + "!" * 80)
-                        print("⛔ PARTIAL EXIT FILL DETECTED - SHUTTING DOWN ⛔")
-                        print("!" * 80)
-                        print(f"Expected to sell: {position.quantity} contracts")
-                        print(f"Actually sold: {total_filled} contracts")
-                        print(f"Remaining position: {position.quantity - total_filled} contracts")
-                        print(f"\nProceeds from partial fill: ${avg_fill_price * total_filled:.2f}")
-                        print(f"Balance after partial fill: ${current_balance + (avg_fill_price * total_filled):.2f}")
-                        print("\n⚠️  BOT SHUT DOWN - PARTIAL EXIT FILL IS UNACCEPTABLE ⚠️")
-                        print("!" * 80 + "\n")
-                        raise RuntimeError(f"Partial exit fill detected: sold {total_filled}/{position.quantity} contracts")
-                    
-                    elif total_filled > 0 and total_filled == position.quantity:
-                        # FULL FILL - Close position completely
-                        proceeds = avg_fill_price * total_filled
-                        current_balance += proceeds
-                        position.close(avg_fill_price, now, pending_exit_order_id)
-                        
-                        # STRICT VALIDATION: Check if exit violates rules
-                        violations = []
-                        
-                        # Check: If price was >= 99¢ when we placed the order, we should have sold at >= 98¢
-                        # (allowing 1¢ slippage)
-                        if rule1_triggered and avg_fill_price < 0.98:
-                            violations.append(f"Emergency exit at 99¢ was triggered but sold at {fmt_cents(avg_fill_price)} (expected >= 98¢)")
-                        
-                        if violations:
-                            print("\n" + "!" * 80)
-                            print("⛔ BOT UNEXPECTED BEHAVIOR ERROR - SHUTTING DOWN ⛔")
-                            print("!" * 80)
-                            for i, violation in enumerate(violations, 1):
-                                print(f"{i}. {violation}")
-                            print(f"\nExpected: Sell at 99¢ when emergency exit triggered")
-                            print(f"Actual: Sold at {fmt_cents(avg_fill_price)}")
-                            print("\n⚠️  BOT SHUT DOWN - RULE VIOLATION DETECTED ⚠️")
-                            print("!" * 80 + "\n")
-                            raise RuntimeError(f"Bot rule violation detected: {'; '.join(violations)}")
-                        
-                        # Check if sold at 99¢ or above - if so, stop trading for this session
-                        if avg_fill_price >= 0.99:
-                            rule1_exit_triggered = True
-                            print("\n" + "<" * 80)
-                            print(f"[{now}] EXIT FILLED: SELL {position.side.upper()}")
-                            print(f"Exit Price: {fmt_cents(avg_fill_price)}")
-                            print(f"Quantity: {total_filled} contracts")
+                                if result == "yes":
+                                    winner = "YES"
+                                    settlement_price = 1.0 if position.side == "yes" else 0.0
+                                elif result == "no":
+                                    winner = "NO"
+                                    settlement_price = 0.0 if position.side == "yes" else 1.0
+                                else:
+                                    print(f"Warning: Market result not yet available, using last prices")
+                                    if yes_ask_f and yes_ask_f >= 0.99:
+                                        winner = "YES"
+                                        settlement_price = 1.0 if position.side == "yes" else 0.0
+                                    else:
+                                        winner = "NO"
+                                        settlement_price = 0.0 if position.side == "yes" else 1.0
+                            except Exception as e:
+                                print(f"Error fetching final result: {e}")
+                                if yes_ask_f and yes_ask_f >= 0.99:
+                                    winner = "YES"
+                                    settlement_price = 1.0 if position.side == "yes" else 0.0
+                                else:
+                                    winner = "NO"
+                                    settlement_price = 0.0 if position.side == "yes" else 1.0
+                            
+                            proceeds = settlement_price * position.quantity
+                            current_balance += proceeds
+                            position.close(settlement_price, now)
+                            
+                            print(f"Market settled: {winner} won")
+                            print(f"Position closed at settlement: {position.side.upper()} @ {fmt_cents(settlement_price)}")
                             print(f"Proceeds: {fmt_dollars(proceeds)}")
                             print(f"P&L: {fmt_dollars(position.pnl)}")
-                            print(f"New Balance: {fmt_dollars(current_balance)}")
-                            print(f"\n🎯 SOLD AT 99¢+ - STOPPING TRADING FOR THIS SESSION")
-                            print(f"Waiting for market to close before next session...")
-                            print("<" * 80 + "\n")
-                        else:
-                            print("\n" + "<" * 80)
-                            print(f"[{now}] EXIT FILLED: SELL {position.side.upper()}")
-                            print(f"Exit Price: {fmt_cents(avg_fill_price)}")
-                            print(f"Quantity: {total_filled} contracts")
-                            print(f"Proceeds: {fmt_dollars(proceeds)}")
-                            print(f"P&L: {fmt_dollars(position.pnl)}")
-                            print(f"New Balance: {fmt_dollars(current_balance)}")
-                            print("<" * 80 + "\n")
-                        
-                        trades_log.append(position)
-                        print(f"Trade #{len(trades_log)}: {position}\n")
-                        
-                        if position.pnl >= 0:
-                            outcome = f"Exited {position.side.upper()} at stop - Small profit"
-                        else:
-                            outcome = f"Exited {position.side.upper()} at stop - Loss"
-                        
-                        # Log to CSV
-                        trade_cost = position.entry_price * position.quantity
-                        trade_pnl_pct = (position.pnl / trade_cost) * 100 if trade_cost > 0 else 0
-                        session_pnl_pct = ((current_balance - session_start_balance) / session_start_balance) * 100 if session_start_balance > 0 else 0
-                        
-                        # Check if this was a Rule 1 emergency exit
-                        is_emergency_exit = rule1_exit_price is not None
-                        
-                        log_trade_to_csv(
+                            
+                            trades_log.append(position)
+                            
+                            if position.side.upper() == winner:
+                                outcome = f"Held {position.side.upper()} to close - WON"
+                            else:
+                                outcome = f"Held {position.side.upper()} to close - LOST"
+                            
+                            # Log to CSV
+                            trade_cost = position.entry_price * position.quantity
+                            trade_pnl_pct = (position.pnl / trade_cost) * 100 if trade_cost > 0 else 0
+                            session_pnl_pct = ((current_balance - session_start_balance) / session_start_balance) * 100 if session_start_balance > 0 else 0
+                            log_trade_to_csv(
                             session_info={
                                 "session_number": session_number,
                                 "session_start_time": session_start_time,
@@ -1263,39 +827,527 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                                 "sell_price": position.exit_price,
                                 "sell_quantity": position.quantity,
                                 "sell_proceeds": proceeds,
-                                "sell_order_id": position.exit_order_id,
-                                "exit_type": "RULE1_EMERGENCY_EXIT" if is_emergency_exit else "MANUAL_STOP_LOSS",
+                                "sell_order_id": position.exit_order_id if position.exit_order_id else None,
+                                "exit_type": "SETTLEMENT",
                                 "trade_pnl": position.pnl,
                                 "trade_pnl_percent": trade_pnl_pct,
-                                "emergency_exit": is_emergency_exit,
-                                "emergency_exit_time": rule1_exit_time if is_emergency_exit else "",
-                                "emergency_exit_price": rule1_exit_price if is_emergency_exit else "",
-                                "boundary_difference": rule1_boundary_diff if is_emergency_exit else "",
-                                "market_outcome": ""  # Market hasn't settled yet for manual exits
+                                "emergency_exit": False,
+                                "emergency_exit_time": "",
+                                "emergency_exit_price": "",
+                                "boundary_difference": "",
+                                "market_outcome": winner
                             }
                         )
-                        
-                        position = None
-                        pending_exit_order_id = None
-                except Exception as e:
-                    print(f"DEBUG: Error checking exit fills: {e}")
+                        else:
+                            outcome = "No position at close"
 
-            last_yes_ask = yes_ask
-        
+                        if session_end_time is None:
+                            session_end_time = now
+
+                        print_session_summary(
+                            session_number,
+                            market_ticker,
+                            session_start_time,
+                            session_end_time,
+                            session_start_balance,
+                            current_balance,
+                            position,
+                            trades_log,
+                            outcome,
+                        )
+
+                        return current_balance
+
+                    # (Quiet mode) No per-tick console printing here; continue processing.
+
+                    # Check if pending entry has filled
+                    if pending_entry_order_id and position is None:
+                        try:
+                            fills_response = await _to_thread(client.get_fills, ticker=market_ticker, limit=20)
+                            fills = fills_response.get("fills", [])
+                            
+                            # Debug: Show fills on first few checks
+                            if PRINT_TICK_UPDATES and update_count % 10 == 0 and fills:
+                                print(f"DEBUG: Checking {len(fills)} fills for order {pending_entry_order_id}")
+                                if fills:
+                                    first_fill = fills[0]
+                                    print(f"DEBUG: First fill order_id: {first_fill.get('order_id')}")
+                                    print(f"DEBUG: Expected order_id: {pending_entry_order_id}")
+                                    print(f"DEBUG: Match: {first_fill.get('order_id') == pending_entry_order_id}")
+                            
+                            total_filled = 0
+                            avg_fill_price = 0
+                            for fill in fills:
+                                if fill.get("order_id") == pending_entry_order_id:
+                                    # Kalshi API returns: count_fp (string), yes_price_dollars/no_price_dollars (string in dollars)
+                                    count = int(float(fill.get("count_fp", "0")))
+                                    total_filled += count
+                                    if pending_entry_side == "yes":
+                                        price_dollars = fill.get("yes_price_dollars", "0")
+                                        avg_fill_price = safe_float(price_dollars)
+                                    else:
+                                        price_dollars = fill.get("no_price_dollars", "0")
+                                        avg_fill_price = safe_float(price_dollars)
+                            
+                            # Check if order is partially filled or taking too long
+                            time_since_order = (datetime.now() - pending_entry_time).total_seconds() if pending_entry_time else 0
+                            
+                            if total_filled > 0 and total_filled < pending_entry_quantity:
+                                # PARTIAL FILL DETECTED - Cancel the order
+                                print(f"\n[{now}] ⚠️  PARTIAL FILL DETECTED ⚠️")
+                                print(f"Expected: {pending_entry_quantity} contracts | Filled: {total_filled} contracts")
+                                print(f"Canceling order and rejecting partial fill...")
+                                
+                                try:
+                                    # Cancel the remaining order
+                                    client.delete(f"/portfolio/orders/{pending_entry_order_id}", auth=True)
+                                    print(f"Order {pending_entry_order_id} canceled successfully")
+                                except Exception as cancel_error:
+                                    print(f"Warning: Could not cancel order: {cancel_error}")
+                                
+                                # Refund the partial fill cost
+                                refund = avg_fill_price * total_filled
+                                current_balance += refund
+                                print(f"Refunded {fmt_dollars(refund)} from partial fill")
+                                print(f"No position created - waiting for next opportunity\n")
+                                
+                                pending_entry_order_id = None
+                                pending_entry_side = None
+                                pending_entry_quantity = None
+                                pending_entry_time = None
+                                
+                            elif total_filled > 0 and total_filled == pending_entry_quantity:
+                                # FULL FILL - Create position
+                                position = LivePosition(pending_entry_side, avg_fill_price, total_filled, now, pending_entry_order_id)
+                                cost = avg_fill_price * total_filled
+                                current_balance -= cost
+                                
+                                print("\n" + ">" * 80)
+                                print(f"[{now}] ENTRY FILLED: BUY {pending_entry_side.upper()}")
+                                print(f"Entry Price: {fmt_cents(avg_fill_price)}")
+                                print(f"Quantity: {total_filled} contracts (FULL FILL)")
+                                print(f"Cost: {fmt_dollars(cost)}")
+                                print(f"Remaining Balance: {fmt_dollars(current_balance)}")
+                                print(">" * 80 + "\n")
+                                
+                                # STRICT VALIDATION: Check if entry violates rules
+                                balance_before_trade = current_balance + cost
+                                expected_position_value = balance_before_trade * POSITION_SIZE_PCT
+                                position_value_tolerance = 0.15  # Allow 15% tolerance for rounding
+                                min_allowed = expected_position_value * (1 - position_value_tolerance)
+                                max_allowed = expected_position_value * (1 + position_value_tolerance)
+                                
+                                violations = []
+                                
+                                # Check 1: Entry price must be >= 0.95 (allowing small slippage from 0.98)
+                                if avg_fill_price < 0.95:
+                                    violations.append(f"Entry price {fmt_cents(avg_fill_price)} is below minimum 95¢ (expected >= 98¢)")
+                                
+                                # Check 2: Position size must be approximately 40% of balance
+                                if cost < min_allowed or cost > max_allowed:
+                                    violations.append(f"Position cost ${cost:.2f} is outside allowed range ${min_allowed:.2f}-${max_allowed:.2f} (should be ~40% of ${balance_before_trade:.2f})")
+                                
+                                if violations:
+                                    print("\n" + "!" * 80)
+                                    print("⛔ BOT UNEXPECTED BEHAVIOR ERROR - SHUTTING DOWN ⛔")
+                                    print("!" * 80)
+                                    for i, violation in enumerate(violations, 1):
+                                        print(f"{i}. {violation}")
+                                    print(f"\nExpected: Entry >= 98¢, Position = 40% of balance (${expected_position_value:.2f})")
+                                    print(f"Actual: Entry = {fmt_cents(avg_fill_price)}, Position cost = ${cost:.2f}")
+                                    print("\n⚠️  BOT SHUT DOWN - RULE VIOLATION DETECTED ⚠️")
+                                    print("!" * 80 + "\n")
+                                    raise RuntimeError(f"Bot rule violation detected: {'; '.join(violations)}")
+                                
+                                pending_entry_order_id = None
+                                pending_entry_side = None
+                                pending_entry_quantity = None
+                                pending_entry_time = None
+                                
+                            elif total_filled == 0 and time_since_order > ENTRY_ORDER_TIMEOUT_SECONDS:
+                                # NO FILL after timeout - Cancel order
+                                print(f"\n[{now}] Order not filled after {ENTRY_ORDER_TIMEOUT_SECONDS} seconds - canceling...")
+                                try:
+                                    await _to_thread(client.delete, f"/portfolio/orders/{pending_entry_order_id}", auth=True)
+                                    print(f"Order {pending_entry_order_id} canceled")
+                                except Exception as cancel_error:
+                                    print(f"Warning: Could not cancel order: {cancel_error}")
+                                
+                                pending_entry_order_id = None
+                                pending_entry_side = None
+                                pending_entry_quantity = None
+                                pending_entry_time = None
+                                
+                        except Exception as e:
+                            if PRINT_TICK_UPDATES:
+                                print(f"DEBUG: Error checking fills: {e}")
+
+                    # Entry logic
+                    time_remaining = (close_time - current_time).total_seconds() / 60
+                    trading_allowed = time_remaining <= TRADING_DELAY_MINUTES
+
+                    current_price = None
+
+                    if position is None and pending_entry_order_id is None and not rule1_exit_triggered and trading_allowed:
+                        if yes_ask_f is not None and yes_ask_f >= ENTRY_TRIGGER:
+                            position_value_dollars = current_balance * POSITION_SIZE_PCT
+                            quantity = max(1, int(position_value_dollars / yes_ask_f))
+                            if quantity > 0:
+                                yes_price_cents = int(ENTRY_TRIGGER * 100)
+                                try:
+                                    print(f"[{now}] PLACING BUY ORDER: YES @ {fmt_cents(ENTRY_TRIGGER)} x {quantity} contracts")
+                                    order_response = await _to_thread(
+                                        client.create_order,
+                                        ticker=market_ticker,
+                                        side="yes",
+                                        action="buy",
+                                        count=quantity,
+                                        yes_price=yes_price_cents,
+                                    )
+                                    order = order_response.get("order", {})
+                                    pending_entry_order_id = order.get("order_id")
+                                    pending_entry_side = "yes"
+                                    pending_entry_quantity = quantity
+                                    pending_entry_time = datetime.now()
+                                except Exception as e:
+                                    print(f"[{now}] ERROR placing buy order: {e}")
+                                    print(f"[{now}] Order params: ticker={market_ticker} side=yes action=buy count={quantity} yes_price={yes_price_cents}")
+                                    resp = getattr(e, "response", None)
+                                    if resp is not None:
+                                        try:
+                                            print(f"[{now}] API response JSON: {resp.json()}")
+                                        except Exception:
+                                            try:
+                                                print(f"[{now}] API response text: {resp.text}")
+                                            except Exception:
+                                                pass
+
+                        elif no_ask is not None and no_ask >= ENTRY_TRIGGER:
+                            position_value_dollars = current_balance * POSITION_SIZE_PCT
+                            quantity = max(1, int(position_value_dollars / no_ask))
+                            if quantity > 0:
+                                no_price_cents = int(ENTRY_TRIGGER * 100)
+                                try:
+                                    print(f"[{now}] PLACING BUY ORDER: NO @ {fmt_cents(ENTRY_TRIGGER)} x {quantity} contracts")
+                                    order_response = await _to_thread(
+                                        client.create_order,
+                                        ticker=market_ticker,
+                                        side="no",
+                                        action="buy",
+                                        count=quantity,
+                                        no_price=no_price_cents,
+                                    )
+                                    order = order_response.get("order", {})
+                                    pending_entry_order_id = order.get("order_id")
+                                    pending_entry_side = "no"
+                                    pending_entry_quantity = quantity
+                                    pending_entry_time = datetime.now()
+                                except Exception as e:
+                                    print(f"[{now}] ERROR placing buy order: {e}")
+                                    print(f"[{now}] Order params: ticker={market_ticker} side=no action=buy count={quantity} no_price={no_price_cents}")
+                                    resp = getattr(e, "response", None)
+                                    if resp is not None:
+                                        try:
+                                            print(f"[{now}] API response JSON: {resp.json()}")
+                                        except Exception:
+                                            try:
+                                                print(f"[{now}] API response text: {resp.text}")
+                                            except Exception:
+                                                pass
+
+                    # RULE 1: Emergency exit when at 99%+ but BTC price too close to target boundary
+                    # This prevents rare settlement loss scenarios where outcome flips last minute
+                    elif position is not None and pending_exit_order_id is None:
+                        # Determine current position value
+                        if position.side == "yes":
+                            current_price = yes_ask_f
+                        else:
+                            current_price = no_ask
+                        
+                        # Check if Rule 1 should trigger - immediately sell at 99%+
+                        rule1_triggered = False
+                        if current_price is not None and current_price >= RULE1_EMERGENCY_EXIT_THRESHOLD:
+                            rule1_triggered = True
+                            # Store emergency exit details for CSV logging
+                            rule1_exit_time = now
+                            rule1_exit_price = current_price
+                            rule1_boundary_diff = None  # No longer checking boundary
+                            print(f"\n[{now}] ⚠️  RULE 1 TRIGGERED - EMERGENCY EXIT AT 99%+ ⚠️")
+                            print(f"Position reached {fmt_cents(current_price)} (99%+)")
+                            print(f"Action: Selling immediately to lock in profit instead of waiting for settlement")
+                        
+                        # Rule 1 emergency exit
+                        if rule1_triggered:
+                            price_cents = int(current_price * 100)
+                            
+                            # CRITICAL: Ensure we sell the EXACT quantity we bought
+                            sell_quantity = position.quantity
+                            if sell_quantity <= 0:
+                                print(f"[{now}] ERROR: Invalid sell quantity {sell_quantity}! Skipping sell.")
+                            else:
+                                try:
+                                    print(f"\n[{now}] ⚠️  RULE 1 EMERGENCY EXIT ⚠️")
+                                    print(f"[{now}] Selling ALL {sell_quantity} contracts (bought at {fmt_cents(position.entry_price)})")
+                                    print(f"[{now}] PLACING EMERGENCY SELL ORDER: {position.side.upper()} @ {fmt_cents(current_price)} x {sell_quantity}")
+                                    order_response = client.create_order(
+                                        ticker=market_ticker,
+                                        side=position.side,
+                                        action="sell",
+                                        count=sell_quantity,
+                                        yes_price=price_cents if position.side == "yes" else None,
+                                        no_price=price_cents if position.side == "no" else None
+                                    )
+                                    order = order_response.get("order", {})
+                                    exit_order_id = order.get("order_id")
+                                    pending_exit_order_id = exit_order_id
+                                    rule1_exit_triggered = True  # Set flag to prevent re-entry
+                                    print(f"Emergency exit order placed: {exit_order_id}")
+                                    print(f"[Rule 1] Re-entry disabled for this session")
+                                        
+                                except Exception as e:
+                                    print(f"[{now}] ERROR placing emergency exit order: {e}")
+
+                        # Fixed exit at 88¢
+                        if current_price is not None and current_price <= EXIT_TRIGGER:
+                            price_cents = int(current_price * 100)
+
+                            # CRITICAL: Ensure we sell the EXACT quantity we bought
+                            sell_quantity = position.quantity
+                            if sell_quantity <= 0:
+                                print(f"[{now}] ERROR: Invalid sell quantity {sell_quantity}! Skipping sell.")
+                            else:
+                                try:
+                                    print(f"\n[{now}] STOP LOSS TRIGGERED: Entry @ {fmt_cents(position.entry_price)} | Exit @ {fmt_cents(EXIT_TRIGGER)} | Current @ {fmt_cents(current_price)}")
+                                    print(f"[{now}] Selling ALL {sell_quantity} contracts (bought at {fmt_cents(position.entry_price)})")
+                                    print(f"[{now}] PLACING SELL ORDER: {position.side.upper()} @ {fmt_cents(current_price)} x {sell_quantity}")
+                                    order_response = client.create_order(
+                                        ticker=market_ticker,
+                                        side=position.side,
+                                        action="sell",
+                                        count=sell_quantity,
+                                        yes_price=price_cents if position.side == "yes" else None,
+                                        no_price=price_cents if position.side == "no" else None,
+                                    )
+                                    order = order_response.get("order", {})
+                                    exit_order_id = order.get("order_id")
+                                    pending_exit_order_id = exit_order_id
+                                    print(f"Sell order placed: {exit_order_id}")
+                                    print(f"[{now}] Confirmed: Selling {sell_quantity} contracts to close position")
+                                except Exception as e:
+                                    print(f"[{now}] ERROR placing sell order: {e}")
+            
+                    # Check if pending exit order has filled
+                    if pending_exit_order_id and position is not None:
+                        try:
+                            # Wait 2 seconds to ensure all fills are reported
+                            await asyncio.sleep(2)
+                            
+                            fills_response = await _to_thread(client.get_fills, ticker=market_ticker, limit=20)
+                            fills = fills_response.get("fills", [])
+                            
+                            total_filled = 0
+                            avg_fill_price = 0
+                            fill_prices = []
+                            for fill in fills:
+                                if fill.get("order_id") == pending_exit_order_id:
+                                    count = int(float(fill.get("count_fp", "0")))
+                                    total_filled += count
+                                    if position.side == "yes":
+                                        price_dollars = fill.get("yes_price_dollars", "0")
+                                        fill_price = safe_float(price_dollars)
+                                    else:
+                                        price_dollars = fill.get("no_price_dollars", "0")
+                                        fill_price = safe_float(price_dollars)
+                                    fill_prices.append(fill_price)
+                            
+                            # Calculate weighted average fill price
+                            if fill_prices:
+                                avg_fill_price = sum(fill_prices) / len(fill_prices)
+                            
+                            if total_filled > 0 and total_filled < position.quantity:
+                                # PARTIAL FILL ON EXIT - handle gracefully by selling remaining quantity
+                                remaining_qty = position.quantity - total_filled
+
+                                proceeds = avg_fill_price * total_filled
+                                current_balance += proceeds
+
+                                print("\n" + "!" * 80)
+                                print("⚠️  PARTIAL EXIT FILL DETECTED - CONTINUING ⚠️")
+                                print("!" * 80)
+                                print(f"Expected to sell: {position.quantity} contracts")
+                                print(f"Actually sold: {total_filled} contracts")
+                                print(f"Remaining position: {remaining_qty} contracts")
+                                print(f"Proceeds from partial fill: {fmt_dollars(proceeds)}")
+                                print(f"Balance after partial fill: {fmt_dollars(current_balance)}")
+
+                                position.quantity = remaining_qty
+
+                                # Place a new exit order for the remaining contracts
+                                if position.side == "yes":
+                                    current_exit_price = yes_ask_f
+                                else:
+                                    current_exit_price = no_ask
+
+                                if current_exit_price is None:
+                                    current_exit_price = avg_fill_price
+
+                                price_cents = int(current_exit_price * 100)
+                                try:
+                                    order_response = await _to_thread(
+                                        client.create_order,
+                                        ticker=market_ticker,
+                                        side=position.side,
+                                        action="sell",
+                                        count=remaining_qty,
+                                        yes_price=price_cents if position.side == "yes" else None,
+                                        no_price=price_cents if position.side == "no" else None,
+                                    )
+                                    order = order_response.get("order", {})
+                                    pending_exit_order_id = order.get("order_id")
+                                    print(f"New exit order placed for remaining {remaining_qty}: {pending_exit_order_id}")
+                                except Exception as e:
+                                    print(f"[{now}] ERROR placing follow-up exit order: {e}")
+                                    pending_exit_order_id = None
+                                continue
+                            
+                            elif total_filled > 0 and total_filled == position.quantity:
+                                # FULL FILL - Close position completely
+                                proceeds = avg_fill_price * total_filled
+                                current_balance += proceeds
+                                position.close(avg_fill_price, now, pending_exit_order_id)
+                                
+                                # STRICT VALIDATION: Check if exit violates rules
+                                violations = []
+                                
+                                # Check: If price was >= 99¢ when we placed the order, we should have sold at >= 98¢
+                                # (allowing 1¢ slippage)
+                                if rule1_triggered and avg_fill_price < 0.98:
+                                    violations.append(f"Emergency exit at 99¢ was triggered but sold at {fmt_cents(avg_fill_price)} (expected >= 98¢)")
+                                
+                                if violations:
+                                    print("\n" + "!" * 80)
+                                    print("⛔ BOT UNEXPECTED BEHAVIOR ERROR - SHUTTING DOWN ⛔")
+                                    print("!" * 80)
+                                    for i, violation in enumerate(violations, 1):
+                                        print(f"{i}. {violation}")
+                                    print(f"\nExpected: Sell at 99¢ when emergency exit triggered")
+                                    print(f"Actual: Sold at {fmt_cents(avg_fill_price)}")
+                                    print("\n⚠️  BOT SHUT DOWN - RULE VIOLATION DETECTED ⚠️")
+                                    print("!" * 80 + "\n")
+                                    raise RuntimeError(f"Bot rule violation detected: {'; '.join(violations)}")
+                                
+                                # Check if sold at 99¢ or above - if so, stop trading for this session
+                                if avg_fill_price >= 0.99:
+                                    rule1_exit_triggered = True
+                                    print("\n" + "<" * 80)
+                                    print(f"[{now}] EXIT FILLED: SELL {position.side.upper()}")
+                                    print(f"Exit Price: {fmt_cents(avg_fill_price)}")
+                                    print(f"Quantity: {total_filled} contracts")
+                                    print(f"Proceeds: {fmt_dollars(proceeds)}")
+                                    print(f"P&L: {fmt_dollars(position.pnl)}")
+                                    print(f"New Balance: {fmt_dollars(current_balance)}")
+                                    print(f"\n🎯 SOLD AT 99¢+ - STOPPING TRADING FOR THIS SESSION")
+                                    print(f"Waiting for market to close before next session...")
+                                    print("<" * 80 + "\n")
+                                else:
+                                    print("\n" + "<" * 80)
+                                    print(f"[{now}] EXIT FILLED: SELL {position.side.upper()}")
+                                    print(f"Exit Price: {fmt_cents(avg_fill_price)}")
+                                    print(f"Quantity: {total_filled} contracts")
+                                    print(f"Proceeds: {fmt_dollars(proceeds)}")
+                                    print(f"P&L: {fmt_dollars(position.pnl)}")
+                                    print(f"New Balance: {fmt_dollars(current_balance)}")
+                                    print("<" * 80 + "\n")
+                                
+                                trades_log.append(position)
+                                print(f"Trade #{len(trades_log)}: {position}\n")
+                                
+                                if position.pnl >= 0:
+                                    outcome = f"Exited {position.side.upper()} at stop - Small profit"
+                                else:
+                                    outcome = f"Exited {position.side.upper()} at stop - Loss"
+                                
+                                # Log to CSV
+                                trade_cost = position.entry_price * position.quantity
+                                trade_pnl_pct = (position.pnl / trade_cost) * 100 if trade_cost > 0 else 0
+                                session_pnl_pct = ((current_balance - session_start_balance) / session_start_balance) * 100 if session_start_balance > 0 else 0
+                                
+                                # Check if this was a Rule 1 emergency exit
+                                is_emergency_exit = rule1_exit_price is not None
+                                
+                                log_trade_to_csv(
+                                    session_info={
+                                        "session_number": session_number,
+                                        "session_start_time": session_start_time,
+                                        "session_end_time": now,
+                                        "market_ticker": market_ticker,
+                                        "starting_balance": session_start_balance,
+                                        "ending_balance": current_balance,
+                                        "session_pnl": current_balance - session_start_balance,
+                                        "session_pnl_percent": session_pnl_pct
+                                    },
+                                    trade_info={
+                                        "trade_number": len(trades_log),
+                                        "side": position.side,
+                                        "buy_time": position.entry_time,
+                                        "buy_price": position.entry_price,
+                                        "buy_quantity": position.quantity,
+                                        "buy_cost": position.entry_price * position.quantity,
+                                        "buy_order_id": position.entry_order_id,
+                                        "sold": True,
+                                        "sell_time": position.exit_time,
+                                        "sell_price": position.exit_price,
+                                        "sell_quantity": position.quantity,
+                                        "sell_proceeds": proceeds,
+                                        "sell_order_id": position.exit_order_id,
+                                        "exit_type": "RULE1_EMERGENCY_EXIT" if is_emergency_exit else "MANUAL_STOP_LOSS",
+                                        "trade_pnl": position.pnl,
+                                        "trade_pnl_percent": trade_pnl_pct,
+                                        "emergency_exit": is_emergency_exit,
+                                        "emergency_exit_time": rule1_exit_time if is_emergency_exit else "",
+                                        "emergency_exit_price": rule1_exit_price if is_emergency_exit else "",
+                                        "boundary_difference": rule1_boundary_diff if is_emergency_exit else "",
+                                        "market_outcome": ""  # Market hasn't settled yet for manual exits
+                                    }
+                                )
+                                
+                                position = None
+                                pending_exit_order_id = None
+                        except Exception as e:
+                            print(f"DEBUG: Error checking exit fills: {e}")
+
+                    if PRINT_TICK_UPDATES:
+                        if update_count <= 3:
+                            print(f"[{now}] DEBUG: Completed all trading logic for ticker #{update_count}")
+
+                    last_yes_ask = yes_ask_f
+
+                    if PRINT_TICK_UPDATES:
+                        if update_count <= 3:
+                            print(f"[{now}] DEBUG: End of ticker processing #{update_count}, waiting for next message...")
+
+                        if update_count <= 3:
+                            print(f"[{now}] DEBUG: About to continue to next WebSocket message...")
+
+                        if update_count <= 3:
+                            print(f"[{now}] DEBUG: Reached end of WebSocket iteration #{update_count}")
+            
         except websockets.exceptions.ConnectionClosedError as e:
+            print(f"[{now}] DEBUG: WebSocket loop ended due to ConnectionClosedError")
             retry_count += 1
             if retry_count < max_retries:
                 wait_time = min(2 ** retry_count, 30)  # Exponential backoff, max 30 seconds
-                print(f"\n⚠️  WebSocket connection lost: {e}")
+                print(f"\n[!] WebSocket connection lost: {e}")
                 print(f"Reconnecting in {wait_time} seconds... (attempt {retry_count}/{max_retries})")
                 await asyncio.sleep(wait_time)
                 continue
             else:
-                print(f"\n❌ Failed to reconnect after {max_retries} attempts")
+                print(f"\n[!] Failed to reconnect after {max_retries} attempts")
                 raise
         
         except Exception as e:
-            print(f"\n❌ Unexpected error in WebSocket loop: {e}")
+            print(f"[{now}] DEBUG: WebSocket loop ended due to Exception: {e}")
+            print(f"[{now}] DEBUG: Exception type: {type(e).__name__}")
             raise
 
 
@@ -1318,7 +1370,6 @@ async def main_loop():
     print(f"Account balance: {fmt_dollars(balance)}\n")
 
     session_count = 0
-    traded_markets = set()
     
     while True:
         session_count += 1
@@ -1348,31 +1399,20 @@ async def main_loop():
             await asyncio.sleep(30)
             continue
         
-        if ticker in traded_markets:
-            print(f"Already traded {ticker} - waiting for new market...")
-            print("Waiting 30 seconds before checking again...\n")
-            await asyncio.sleep(30)
-            continue
-        
-        traded_markets.add(ticker)
-
         new_balance = await run_live_trading(client, ticker, balance, session_count)
         
         if new_balance is not None:
             balance = new_balance
             print(f"Rolling over balance to next session: {fmt_dollars(balance)}")
         
-        # Session complete, all logging done - now restart for fresh state before finding next market
+        # Session complete - continue to next market without restarting
         print("\n" + "=" * 80)
-        print("SESSION COMPLETE - RESTARTING BOT FOR FRESH START")
+        print("SESSION COMPLETE - SEARCHING FOR NEXT MARKET")
         print("=" * 80)
         print("All session data logged successfully.")
-        print("Shutting down current instance...")
-        print("Restarting script in 5 seconds to search for next market...\n")
-        await asyncio.sleep(5)
-        
-        # Restart the script to refresh everything before finding next market
-        os.execv(sys.executable, [sys.executable] + sys.argv)
+        print(f"Current balance: {fmt_dollars(balance)}")
+        print("Searching for next active market...\n")
+        await asyncio.sleep(2)  # Brief pause before next market search
 
 
 def main():

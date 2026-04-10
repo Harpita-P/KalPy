@@ -1,0 +1,1819 @@
+{
+  "sessions": [
+    {
+      "session_number": 1,
+      "market_ticker": "KXBTC15M-26APR071315-15",
+      "start_time": "2026-04-07 13:06:31",
+      "end_time": "2026-04-07 13:15:01",
+      "starting_balance": 54.43,
+      "ending_balance": 55.31,
+      "session_pnl": 0.88,
+      "session_pnl_percent": 1.62,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.95,
+          "entry_time": "2026-04-07 13:09:27",
+          "quantity": 22,
+          "entry_order_id": "660dbf2b-c9dd-4347-8979-58e05bbdab41",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-07 13:12:57",
+          "exit_order_id": "c0b692dc-6270-4566-8cd6-34e359d7e1d1",
+          "pnl": 0.88,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 3,
+      "market_ticker": "KXBTC15M-26APR071330-30",
+      "start_time": "2026-04-07 13:15:35",
+      "end_time": "2026-04-07 13:30:00",
+      "starting_balance": 55.23,
+      "ending_balance": 55.45,
+      "session_pnl": 0.22,
+      "session_pnl_percent": 0.4,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.98,
+          "entry_time": "2026-04-07 13:26:46",
+          "quantity": 22,
+          "entry_order_id": "3c4d0be4-b0fa-4503-9be3-cc7d2570e9f1",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-07 13:27:41",
+          "exit_order_id": "6ccfac70-d42c-400c-8d13-32ec174a1ce7",
+          "pnl": 0.22,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 1,
+      "market_ticker": "KXBTC15M-26APR071400-00",
+      "start_time": "2026-04-07 13:45:05",
+      "end_time": "2026-04-07 14:00:00",
+      "starting_balance": 55.56,
+      "ending_balance": 56.66,
+      "session_pnl": 1.1,
+      "session_pnl_percent": 1.98,
+      "outcome": "Held NO to close - WON",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.95,
+          "entry_time": "2026-04-07 13:59:58",
+          "quantity": 22,
+          "entry_order_id": "440dbd8a-979c-4811-98de-28364ac7e4a9",
+          "exit_price": 1.0,
+          "exit_time": "2026-04-07 14:00:00",
+          "exit_order_id": null,
+          "pnl": 1.1,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 1,
+      "market_ticker": "KXBTC15M-26APR071530-30",
+      "start_time": "2026-04-07 15:16:12",
+      "end_time": "2026-04-07 15:30:01",
+      "starting_balance": 56.66,
+      "ending_balance": 55.45,
+      "session_pnl": -1.21,
+      "session_pnl_percent": -2.14,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.942,
+          "entry_time": "2026-04-07 15:20:00",
+          "quantity": 23,
+          "entry_order_id": "92d7954e-7373-4034-a074-754b5cfce483",
+          "exit_price": 0.85,
+          "exit_time": "2026-04-07 15:24:03",
+          "exit_order_id": "872b1b1e-7592-4aa2-a55e-8e7380365285",
+          "pnl": -2.12,
+          "status": "CLOSED"
+        },
+        {
+          "side": "yes",
+          "entry_price": 0.95,
+          "entry_time": "2026-04-07 15:24:56",
+          "quantity": 22,
+          "entry_order_id": "ac58f689-094a-4a6d-bc8d-9285ce7acddf",
+          "exit_price": 0.991,
+          "exit_time": "2026-04-07 15:26:28",
+          "exit_order_id": "76906216-fdbf-4a9d-b98f-4ada739d8ba0",
+          "pnl": 0.9,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 1,
+      "market_ticker": "KXBTC15M-26APR072000-00",
+      "start_time": "2026-04-07 19:45:57",
+      "end_time": "2026-04-07 20:00:00",
+      "starting_balance": 55.25,
+      "ending_balance": 56.17,
+      "session_pnl": 0.92,
+      "session_pnl_percent": 1.67,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.95,
+          "entry_time": "2026-04-07 19:59:28",
+          "quantity": 23,
+          "entry_order_id": "f14c58f5-9f32-4487-8d0f-916e4c3f219f",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-07 19:59:30",
+          "exit_order_id": "9135ce80-bfcd-4de6-98ce-61e1c21570bf",
+          "pnl": 0.92,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 3,
+      "market_ticker": "KXBTC15M-26APR072015-15",
+      "start_time": "2026-04-07 20:00:38",
+      "end_time": "2026-04-07 20:15:00",
+      "starting_balance": 56.17,
+      "ending_balance": 55.44,
+      "session_pnl": -0.73,
+      "session_pnl_percent": -1.3,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.95,
+          "entry_time": "2026-04-07 20:11:42",
+          "quantity": 23,
+          "entry_order_id": "c6969b8a-aa93-40c8-9887-142aa058b4c4",
+          "exit_price": 0.88,
+          "exit_time": "2026-04-07 20:12:44",
+          "exit_order_id": "5716777e-c936-40d1-9cac-9b33a84f2f12",
+          "pnl": -1.61,
+          "status": "CLOSED"
+        },
+        {
+          "side": "yes",
+          "entry_price": 0.95,
+          "entry_time": "2026-04-07 20:14:04",
+          "quantity": 22,
+          "entry_order_id": "ada91d79-32b6-4fe9-a632-66ff3f2f8645",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-07 20:14:19",
+          "exit_order_id": "060cb3c7-475e-4615-b893-1f68b310271f",
+          "pnl": 0.88,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 5,
+      "market_ticker": "KXBTC15M-26APR072030-30",
+      "start_time": "2026-04-07 20:15:37",
+      "end_time": "2026-04-07 20:30:00",
+      "starting_balance": 55.36,
+      "ending_balance": 56.28,
+      "session_pnl": 0.92,
+      "session_pnl_percent": 1.66,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.95,
+          "entry_time": "2026-04-07 20:28:06",
+          "quantity": 23,
+          "entry_order_id": "f1c0ec17-8555-48c0-a380-611056aa3b9f",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-07 20:28:56",
+          "exit_order_id": "f1696831-73bd-428e-91f9-72bfe393fdec",
+          "pnl": 0.92,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 7,
+      "market_ticker": "KXBTC15M-26APR072045-45",
+      "start_time": "2026-04-07 20:30:37",
+      "end_time": "2026-04-07 20:45:00",
+      "starting_balance": 56.28,
+      "ending_balance": 57.2,
+      "session_pnl": 0.92,
+      "session_pnl_percent": 1.63,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.95,
+          "entry_time": "2026-04-07 20:44:07",
+          "quantity": 23,
+          "entry_order_id": "3f9d0efd-d89c-4d5c-b0de-7e9f6e4fbf5f",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-07 20:44:15",
+          "exit_order_id": "b55ee24a-e31a-478f-8c3f-34c04b7f5cfb",
+          "pnl": 0.92,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 9,
+      "market_ticker": "KXBTC15M-26APR072100-00",
+      "start_time": "2026-04-07 20:45:37",
+      "end_time": "2026-04-07 21:00:00",
+      "starting_balance": 57.2,
+      "ending_balance": 66.7,
+      "session_pnl": 9.5,
+      "session_pnl_percent": 16.61,
+      "outcome": "No position at close",
+      "trades": []
+    },
+    {
+      "session_number": 11,
+      "market_ticker": "KXBTC15M-26APR072115-15",
+      "start_time": "2026-04-07 21:00:36",
+      "end_time": "2026-04-07 21:15:00",
+      "starting_balance": 57.65,
+      "ending_balance": 80.78,
+      "session_pnl": 23.13,
+      "session_pnl_percent": 40.12,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.95,
+          "entry_time": "2026-04-07 21:14:54",
+          "quantity": 32,
+          "entry_order_id": "68c2aa6f-2650-4b69-82c9-17b6a3e7a51d",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-07 21:14:55",
+          "exit_order_id": "f9f3ad2a-0cb7-42d2-8860-1ff2ae30081e",
+          "pnl": 1.28,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 1,
+      "market_ticker": "KXBTC15M-26APR072145-45",
+      "start_time": "2026-04-07 21:35:11",
+      "end_time": "2026-04-07 21:45:01",
+      "starting_balance": 61.03,
+      "ending_balance": 82.23,
+      "session_pnl": 21.2,
+      "session_pnl_percent": 34.74,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.95,
+          "entry_time": "2026-04-07 21:41:19",
+          "quantity": 25,
+          "entry_order_id": "78b9cbc8-91cf-437f-b403-1fd15bad69eb",
+          "exit_price": 0.86,
+          "exit_time": "2026-04-07 21:41:39",
+          "exit_order_id": "fc0f25c6-7307-4a54-bced-e4d59a3a1fbe",
+          "pnl": -2.25,
+          "status": "CLOSED"
+        },
+        {
+          "side": "yes",
+          "entry_price": 0.94,
+          "entry_time": "2026-04-07 21:42:53",
+          "quantity": 32,
+          "entry_order_id": "c3e2474e-ffd6-446e-a6b7-86179dcda472",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-07 21:43:59",
+          "exit_order_id": "7ebb7a14-6775-4aa8-8b7d-50861e0301ba",
+          "pnl": 1.6,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 3,
+      "market_ticker": "KXBTC15M-26APR072200-00",
+      "start_time": "2026-04-07 21:45:37",
+      "end_time": "2026-04-07 22:00:01",
+      "starting_balance": 61.42,
+      "ending_balance": 62.42,
+      "session_pnl": 1.0,
+      "session_pnl_percent": 1.63,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.95,
+          "entry_time": "2026-04-07 21:58:56",
+          "quantity": 25,
+          "entry_order_id": "c2c33da3-cab3-4169-9d07-6ff0944e51a4",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-07 21:59:31",
+          "exit_order_id": "74f754e6-338a-4d54-b231-65c42f3902f7",
+          "pnl": 1.0,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 5,
+      "market_ticker": "KXBTC15M-26APR072215-15",
+      "start_time": "2026-04-07 22:00:37",
+      "end_time": "2026-04-07 22:15:00",
+      "starting_balance": 62.42,
+      "ending_balance": 63.46,
+      "session_pnl": 1.04,
+      "session_pnl_percent": 1.67,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.95,
+          "entry_time": "2026-04-07 22:08:22",
+          "quantity": 26,
+          "entry_order_id": "ba4d4dfc-0ff7-4378-a85f-13a0e850be9f",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-07 22:10:23",
+          "exit_order_id": "30d13497-aee3-482f-8cf4-ed64cde6f6e1",
+          "pnl": 1.04,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 1,
+      "market_ticker": "KXBTC15M-26APR072245-45",
+      "start_time": "2026-04-07 22:36:40",
+      "end_time": "2026-04-07 22:45:00",
+      "starting_balance": 64.39,
+      "ending_balance": 99.58,
+      "session_pnl": 35.19,
+      "session_pnl_percent": 54.65,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.949,
+          "entry_time": "2026-04-07 22:37:16",
+          "quantity": 27,
+          "entry_order_id": "06b585cc-26e2-4b92-8df9-931a9fe16cf6",
+          "exit_price": 0.88,
+          "exit_time": "2026-04-07 22:38:38",
+          "exit_order_id": "1febd4cf-9c33-4e62-9ce4-71f485212225",
+          "pnl": -1.86,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 3,
+      "market_ticker": "KXBTC15M-26APR072300-00",
+      "start_time": "2026-04-07 22:45:36",
+      "end_time": "2026-04-07 23:00:00",
+      "starting_balance": 64.99,
+      "ending_balance": 64.99,
+      "session_pnl": 0.0,
+      "session_pnl_percent": 0.0,
+      "outcome": "No position at close",
+      "trades": []
+    },
+    {
+      "session_number": 5,
+      "market_ticker": "KXBTC15M-26APR072315-15",
+      "start_time": "2026-04-07 23:00:37",
+      "end_time": "2026-04-07 23:15:00",
+      "starting_balance": 64.99,
+      "ending_balance": 63.86,
+      "session_pnl": -1.13,
+      "session_pnl_percent": -1.74,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.949,
+          "entry_time": "2026-04-07 23:14:27",
+          "quantity": 27,
+          "entry_order_id": "324fd54f-cd32-43c9-b5ad-5e793b342089",
+          "exit_price": 0.86,
+          "exit_time": "2026-04-07 23:14:32",
+          "exit_order_id": "7264549c-2a1c-48ec-856f-3e768358f488",
+          "pnl": -2.4,
+          "status": "CLOSED"
+        },
+        {
+          "side": "no",
+          "entry_price": 0.95,
+          "entry_time": "2026-04-07 23:14:41",
+          "quantity": 26,
+          "entry_order_id": "c1ae0bda-a56a-442d-87f2-63e4dfa74f3e",
+          "exit_price": 0.999,
+          "exit_time": "2026-04-07 23:14:41",
+          "exit_order_id": "e528ddc5-ef98-4331-bdda-fd57b4cda702",
+          "pnl": 1.27,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 1,
+      "market_ticker": "KXBTC15M-26APR072330-30",
+      "start_time": "2026-04-07 23:17:11",
+      "end_time": "2026-04-07 23:30:00",
+      "starting_balance": 63.53,
+      "ending_balance": 64.57,
+      "session_pnl": 1.04,
+      "session_pnl_percent": 1.64,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.95,
+          "entry_time": "2026-04-07 23:28:03",
+          "quantity": 26,
+          "entry_order_id": "9fcf8cbe-e1a0-48d9-b529-ff7e8e214bfb",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-07 23:28:20",
+          "exit_order_id": "1ffbfbf6-ca6f-4c24-9ea3-0bc50f43e06a",
+          "pnl": 1.04,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 2,
+      "market_ticker": "KXBTC15M-26APR072345-45",
+      "start_time": "2026-04-07 23:30:05",
+      "end_time": "2026-04-07 23:45:01",
+      "starting_balance": 64.57,
+      "ending_balance": 65.66,
+      "session_pnl": 1.09,
+      "session_pnl_percent": 1.68,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.95,
+          "entry_time": "2026-04-07 23:40:08",
+          "quantity": 5,
+          "entry_order_id": "bc97b7e5-5a1f-48ef-9dac-4b657dbdcde9",
+          "exit_price": 0.991,
+          "exit_time": "2026-04-07 23:43:45",
+          "exit_order_id": "b93da565-f309-423e-92eb-ebe7b6657087",
+          "pnl": 0.21,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 4,
+      "market_ticker": "KXBTC15M-26APR080000-00",
+      "start_time": "2026-04-07 23:45:37",
+      "end_time": "2026-04-08 00:00:01",
+      "starting_balance": 65.59,
+      "ending_balance": 66.7,
+      "session_pnl": 1.11,
+      "session_pnl_percent": 1.69,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.949,
+          "entry_time": "2026-04-07 23:56:12",
+          "quantity": 27,
+          "entry_order_id": "2d008ba8-bb08-42a6-b010-9fbf440ecf86",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-07 23:57:24",
+          "exit_order_id": "1659320e-14b7-483f-878a-b0a4de44ccc9",
+          "pnl": 1.11,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 1,
+      "market_ticker": "KXBTC15M-26APR081545-45",
+      "start_time": "2026-04-08 15:30:10",
+      "end_time": "2026-04-08 15:45:01",
+      "starting_balance": 66.63,
+      "ending_balance": 64.59,
+      "session_pnl": -2.04,
+      "session_pnl_percent": -3.06,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.95,
+          "entry_time": "2026-04-08 15:37:36",
+          "quantity": 28,
+          "entry_order_id": "ba4d80cb-1c59-4a0d-a906-343949df1524",
+          "exit_price": 0.84,
+          "exit_time": "2026-04-08 15:41:54",
+          "exit_order_id": "d23efea5-5cff-4c5b-852c-67dab0225015",
+          "pnl": -3.08,
+          "status": "CLOSED"
+        },
+        {
+          "side": "yes",
+          "entry_price": 0.95,
+          "entry_time": "2026-04-08 15:42:48",
+          "quantity": 26,
+          "entry_order_id": "e9488226-d7d7-491d-a584-9b8bb602f7de",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-08 15:43:10",
+          "exit_order_id": "72fd17cf-f1f1-461b-8c13-1f70979ade43",
+          "pnl": 1.04,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 3,
+      "market_ticker": "KXBTC15M-26APR081600-00",
+      "start_time": "2026-04-08 15:45:35",
+      "end_time": "2026-04-08 16:00:00",
+      "starting_balance": 64.49,
+      "ending_balance": 81.96,
+      "session_pnl": 17.47,
+      "session_pnl_percent": 27.09,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.95,
+          "entry_time": "2026-04-08 15:59:06",
+          "quantity": 33,
+          "entry_order_id": "94009398-6da3-4130-8db2-bed3b27bfdfa",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-08 15:59:15",
+          "exit_order_id": "12829dd7-ae3b-4a36-9117-3689d0a86c09",
+          "pnl": 1.32,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 5,
+      "market_ticker": "KXBTC15M-26APR081615-15",
+      "start_time": "2026-04-08 16:00:37",
+      "end_time": "2026-04-08 16:15:00",
+      "starting_balance": 67.08,
+      "ending_balance": 68.26,
+      "session_pnl": 1.18,
+      "session_pnl_percent": 1.75,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.948,
+          "entry_time": "2026-04-08 16:07:54",
+          "quantity": 28,
+          "entry_order_id": "c74cbeab-4b1b-4ee3-b514-04970b483048",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-08 16:11:03",
+          "exit_order_id": "16ce7f94-9a48-4b54-9343-573b717c16f2",
+          "pnl": 1.18,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 7,
+      "market_ticker": "KXBTC15M-26APR081630-30",
+      "start_time": "2026-04-08 16:15:34",
+      "end_time": "2026-04-08 16:30:00",
+      "starting_balance": 68.13,
+      "ending_balance": 95.3,
+      "session_pnl": 27.17,
+      "session_pnl_percent": 39.88,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.95,
+          "entry_time": "2026-04-08 16:29:24",
+          "quantity": 38,
+          "entry_order_id": "e026a5ac-9db4-4279-b77b-2b2410025dcb",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-08 16:29:25",
+          "exit_order_id": "79f3f862-7e13-4806-8059-dcf9db88ddbb",
+          "pnl": 1.52,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 9,
+      "market_ticker": "KXBTC15M-26APR081645-45",
+      "start_time": "2026-04-08 16:30:36",
+      "end_time": "2026-04-08 16:45:00",
+      "starting_balance": 71.01,
+      "ending_balance": 72.34,
+      "session_pnl": 1.33,
+      "session_pnl_percent": 1.88,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.944,
+          "entry_time": "2026-04-08 16:37:13",
+          "quantity": 29,
+          "entry_order_id": "b537ac19-5e74-41ae-8b77-cedcc062f835",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-08 16:41:01",
+          "exit_order_id": "8c7f6201-d587-4baa-a28f-5fe712798f87",
+          "pnl": 1.33,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 1,
+      "market_ticker": "KXBTC15M-26APR081930-30",
+      "start_time": "2026-04-08 19:18:10",
+      "end_time": "2026-04-08 19:30:10",
+      "starting_balance": 73.39,
+      "ending_balance": 74.65,
+      "session_pnl": 1.26,
+      "session_pnl_percent": 1.72,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.948,
+          "entry_time": "2026-04-08 19:22:03",
+          "quantity": 30,
+          "entry_order_id": "4e2fc8a9-c552-4f19-9005-cdf771d73fe8",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-08 19:25:30",
+          "exit_order_id": "68659048-9cdd-4399-8bef-a89271be9916",
+          "pnl": 1.26,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 2,
+      "market_ticker": "KXBTC15M-26APR081945-45",
+      "start_time": "2026-04-08 19:30:13",
+      "end_time": "2026-04-08 19:45:00",
+      "starting_balance": 74.51,
+      "ending_balance": 71.52,
+      "session_pnl": -2.99,
+      "session_pnl_percent": -4.02,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.95,
+          "entry_time": "2026-04-08 19:41:29",
+          "quantity": 31,
+          "entry_order_id": "b8653f79-6b5a-429b-9471-1593a0b675d3",
+          "exit_price": 0.88,
+          "exit_time": "2026-04-08 19:41:59",
+          "exit_order_id": "6071cf76-0aef-4cfb-90a0-5596018bd859",
+          "pnl": -2.17,
+          "status": "CLOSED"
+        },
+        {
+          "side": "yes",
+          "entry_price": 0.95,
+          "entry_time": "2026-04-08 19:42:21",
+          "quantity": 8,
+          "entry_order_id": "ae2db246-cfd8-4b54-8686-1a8142ebddad",
+          "exit_price": 0.88,
+          "exit_time": "2026-04-08 19:42:27",
+          "exit_order_id": "57233907-9755-4d41-b652-cce5e4e3bf96",
+          "pnl": -0.56,
+          "status": "CLOSED"
+        },
+        {
+          "side": "yes",
+          "entry_price": 0.946,
+          "entry_time": "2026-04-08 19:42:59",
+          "quantity": 1,
+          "entry_order_id": "3901b7e4-5ca4-45d7-93cc-dd9ecb3a296a",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-08 19:43:41",
+          "exit_order_id": "8b5ef79e-c22f-4354-bca6-3ee83c044465",
+          "pnl": 0.04,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 4,
+      "market_ticker": "KXBTC15M-26APR082000-00",
+      "start_time": "2026-04-08 19:45:34",
+      "end_time": "2026-04-08 20:00:01",
+      "starting_balance": 70.4,
+      "ending_balance": 71.56,
+      "session_pnl": 1.16,
+      "session_pnl_percent": 1.65,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.95,
+          "entry_time": "2026-04-08 19:58:01",
+          "quantity": 29,
+          "entry_order_id": "3308ab44-6cb8-4310-a538-fdfbf0186916",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-08 19:58:33",
+          "exit_order_id": "bba6e73f-8b77-4ff7-89bf-23f551854b2b",
+          "pnl": 1.16,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 8,
+      "market_ticker": "KXBTC15M-26APR082015-15",
+      "start_time": "2026-04-08 20:01:38",
+      "end_time": "2026-04-08 20:15:09",
+      "starting_balance": 71.56,
+      "ending_balance": 95.92,
+      "session_pnl": 24.36,
+      "session_pnl_percent": 34.04,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.95,
+          "entry_time": "2026-04-08 20:11:04",
+          "quantity": 39,
+          "entry_order_id": "8d161a18-8209-42ae-9c37-942d2b4fb232",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-08 20:12:52",
+          "exit_order_id": "d4dbf8c4-3f9f-4ded-b466-59fee64d7c86",
+          "pnl": 1.56,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 1,
+      "market_ticker": "KXBTC15M-26APR082030-30",
+      "start_time": "2026-04-08 20:15:45",
+      "end_time": "2026-04-08 20:30:00",
+      "starting_balance": 74.62,
+      "ending_balance": 82.85,
+      "session_pnl": 8.23,
+      "session_pnl_percent": 11.03,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.95,
+          "entry_time": "2026-04-08 20:24:46",
+          "quantity": 18,
+          "entry_order_id": "e7b487f0-0dd9-44e9-9ff2-ce533f067d97",
+          "exit_price": 0.84,
+          "exit_time": "2026-04-08 20:26:53",
+          "exit_order_id": "7cd7c76b-435c-4c08-97c5-0ea2c710b741",
+          "pnl": -1.98,
+          "status": "CLOSED"
+        },
+        {
+          "side": "no",
+          "entry_price": 0.95,
+          "entry_time": "2026-04-08 20:28:12",
+          "quantity": 29,
+          "entry_order_id": "680021ad-97be-4d51-ad84-13988e6da5dc",
+          "exit_price": 0.88,
+          "exit_time": "2026-04-08 20:28:16",
+          "exit_order_id": "c2c18555-aced-44f8-afaa-03966638b977",
+          "pnl": -2.03,
+          "status": "CLOSED"
+        },
+        {
+          "side": "no",
+          "entry_price": 0.95,
+          "entry_time": "2026-04-08 20:28:43",
+          "quantity": 1,
+          "entry_order_id": "4b35a926-7bf7-4010-b98a-15bf403a3c06",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-08 20:28:55",
+          "exit_order_id": "9e6ff3a9-8436-4e18-917f-4e297c4c5696",
+          "pnl": 0.04,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 3,
+      "market_ticker": "KXBTC15M-26APR082045-45",
+      "start_time": "2026-04-08 20:30:36",
+      "end_time": "2026-04-08 20:45:00",
+      "starting_balance": 68.06,
+      "ending_balance": 69.18,
+      "session_pnl": 1.12,
+      "session_pnl_percent": 1.65,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.95,
+          "entry_time": "2026-04-08 20:40:09",
+          "quantity": 28,
+          "entry_order_id": "8fa0257d-28dd-4993-978b-122bdc74434f",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-08 20:41:23",
+          "exit_order_id": "af5867e2-0e1e-4e20-a438-62651e730d96",
+          "pnl": 1.12,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 1,
+      "market_ticker": "KXBTC15M-26APR082115-15",
+      "start_time": "2026-04-08 21:06:32",
+      "end_time": "2026-04-08 21:15:09",
+      "starting_balance": 68.54,
+      "ending_balance": 69.38,
+      "session_pnl": 0.84,
+      "session_pnl_percent": 1.23,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.96,
+          "entry_time": "2026-04-08 21:07:55",
+          "quantity": 28,
+          "entry_order_id": "0babe815-0986-4705-8bb5-ce416b8d6793",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-08 21:09:07",
+          "exit_order_id": "b34c0579-62ee-45cd-83e1-05c17329adf7",
+          "pnl": 0.84,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 1,
+      "market_ticker": "KXBTC15M-26APR082145-45",
+      "start_time": "2026-04-08 21:37:49",
+      "end_time": "2026-04-08 21:45:00",
+      "starting_balance": 68.22,
+      "ending_balance": 68.76,
+      "session_pnl": 0.54,
+      "session_pnl_percent": 0.79,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.97,
+          "entry_time": "2026-04-08 21:38:49",
+          "quantity": 27,
+          "entry_order_id": "86885133-7cdb-4878-a82a-aac824fd10ec",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-08 21:40:34",
+          "exit_order_id": "676a98d2-7560-4dfe-b3f3-6248cf9198a7",
+          "pnl": 0.54,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 1,
+      "market_ticker": "KXBTC15M-26APR082345-45",
+      "start_time": "2026-04-08 23:40:13",
+      "end_time": "2026-04-08 23:45:00",
+      "starting_balance": 69.22,
+      "ending_balance": 69.78,
+      "session_pnl": 0.56,
+      "session_pnl_percent": 0.81,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.97,
+          "entry_time": "2026-04-08 23:44:39",
+          "quantity": 28,
+          "entry_order_id": "6182bf49-9c97-4b4f-bced-6c49f9842c72",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-08 23:44:53",
+          "exit_order_id": "74b27586-e3e7-4528-a6bc-cb97a48e0626",
+          "pnl": 0.56,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 3,
+      "market_ticker": "KXBTC15M-26APR090000-00",
+      "start_time": "2026-04-08 23:45:35",
+      "end_time": "2026-04-09 00:00:01",
+      "starting_balance": 69.78,
+      "ending_balance": 70.34,
+      "session_pnl": 0.56,
+      "session_pnl_percent": 0.8,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.97,
+          "entry_time": "2026-04-08 23:54:53",
+          "quantity": 1,
+          "entry_order_id": "b3e278c4-0f63-463d-842c-b97fb1c37667",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-08 23:56:52",
+          "exit_order_id": "043b5976-f0ef-419a-90ff-fe361271bec8",
+          "pnl": 0.02,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 4,
+      "market_ticker": "KXBTC15M-26APR090015-15",
+      "start_time": "2026-04-09 00:00:05",
+      "end_time": "2026-04-09 00:15:01",
+      "starting_balance": 70.31,
+      "ending_balance": 70.31,
+      "session_pnl": 0.0,
+      "session_pnl_percent": 0.0,
+      "outcome": "No position at close",
+      "trades": []
+    },
+    {
+      "session_number": 1,
+      "market_ticker": "KXBTC15M-26APR091415-15",
+      "start_time": "2026-04-09 14:04:28",
+      "end_time": "2026-04-09 14:15:00",
+      "starting_balance": 70.91,
+      "ending_balance": 71.52,
+      "session_pnl": 0.61,
+      "session_pnl_percent": 0.86,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.969,
+          "entry_time": "2026-04-09 14:04:50",
+          "quantity": 24,
+          "entry_order_id": "a3967216-ce71-4cd4-a73c-8f5062f000b4",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-09 14:08:48",
+          "exit_order_id": "1f127b35-8a56-4730-a4ab-0d3a95a4464f",
+          "pnl": 0.5,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 3,
+      "market_ticker": "KXBTC15M-26APR091430-30",
+      "start_time": "2026-04-09 14:15:37",
+      "end_time": "2026-04-09 14:30:01",
+      "starting_balance": 71.2,
+      "ending_balance": 71.78,
+      "session_pnl": 0.58,
+      "session_pnl_percent": 0.81,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.97,
+          "entry_time": "2026-04-09 14:29:22",
+          "quantity": 3,
+          "entry_order_id": "1adb6724-8b54-42cd-8c27-d82e1c219394",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-09 14:29:37",
+          "exit_order_id": "182429d6-4333-46a3-91bb-475aec9c9a68",
+          "pnl": 0.06,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 5,
+      "market_ticker": "KXBTC15M-26APR091445-45",
+      "start_time": "2026-04-09 14:30:37",
+      "end_time": "2026-04-09 14:45:01",
+      "starting_balance": 71.66,
+      "ending_balance": 72.5,
+      "session_pnl": 0.84,
+      "session_pnl_percent": 1.17,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.962,
+          "entry_time": "2026-04-09 14:43:32",
+          "quantity": 29,
+          "entry_order_id": "588f3c0f-80bb-4a11-8aa7-d9d31a099818",
+          "exit_price": 0.991,
+          "exit_time": "2026-04-09 14:43:48",
+          "exit_order_id": "395539db-cc75-461a-b953-62860845c211",
+          "pnl": 0.84,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 7,
+      "market_ticker": "KXBTC15M-26APR091500-00",
+      "start_time": "2026-04-09 14:45:37",
+      "end_time": "2026-04-09 15:00:01",
+      "starting_balance": 72.4,
+      "ending_balance": 72.4,
+      "session_pnl": 0.0,
+      "session_pnl_percent": 0.0,
+      "outcome": "No position at close",
+      "trades": []
+    },
+    {
+      "session_number": 9,
+      "market_ticker": "KXBTC15M-26APR091515-15",
+      "start_time": "2026-04-09 15:00:37",
+      "end_time": "2026-04-09 15:15:01",
+      "starting_balance": 72.4,
+      "ending_balance": 73.24,
+      "session_pnl": 0.84,
+      "session_pnl_percent": 1.16,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.961,
+          "entry_time": "2026-04-09 15:09:25",
+          "quantity": 29,
+          "entry_order_id": "dac13dea-7655-407c-abc6-8d39ae0d92de",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-09 15:11:58",
+          "exit_order_id": "1026e2e1-122d-41e0-a3d1-0ddc631a5816",
+          "pnl": 0.84,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 11,
+      "market_ticker": "KXBTC15M-26APR091530-30",
+      "start_time": "2026-04-09 15:15:38",
+      "end_time": "2026-04-09 15:30:00",
+      "starting_balance": 73.16,
+      "ending_balance": 74.0,
+      "session_pnl": 0.84,
+      "session_pnl_percent": 1.15,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.962,
+          "entry_time": "2026-04-09 15:23:17",
+          "quantity": 30,
+          "entry_order_id": "0c4c98b9-5bd8-4187-b952-be913de93004",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-09 15:24:06",
+          "exit_order_id": "b287f7ca-14dd-400b-bcde-e35f7610843d",
+          "pnl": 0.84,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 13,
+      "market_ticker": "KXBTC15M-26APR091545-45",
+      "start_time": "2026-04-09 15:30:38",
+      "end_time": "2026-04-09 15:45:00",
+      "starting_balance": 73.92,
+      "ending_balance": 74.52,
+      "session_pnl": 0.6,
+      "session_pnl_percent": 0.81,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.97,
+          "entry_time": "2026-04-09 15:39:46",
+          "quantity": 30,
+          "entry_order_id": "8253c7ca-d0e7-499e-a93b-31645c785b90",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-09 15:40:09",
+          "exit_order_id": "5d05425c-f274-446a-af2e-beb61302bf3a",
+          "pnl": 0.6,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 15,
+      "market_ticker": "KXBTC15M-26APR091600-00",
+      "start_time": "2026-04-09 15:45:38",
+      "end_time": "2026-04-09 16:00:00",
+      "starting_balance": 74.42,
+      "ending_balance": 75.02,
+      "session_pnl": 0.6,
+      "session_pnl_percent": 0.81,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.97,
+          "entry_time": "2026-04-09 15:59:42",
+          "quantity": 30,
+          "entry_order_id": "e55708a4-0d41-440d-aa19-cad3697fb1ef",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-09 15:59:42",
+          "exit_order_id": "c1bc6e19-0455-4671-a5bf-38a3f1ab21d1",
+          "pnl": 0.6,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 17,
+      "market_ticker": "KXBTC15M-26APR091615-15",
+      "start_time": "2026-04-09 16:00:35",
+      "end_time": "2026-04-09 16:15:01",
+      "starting_balance": 75.02,
+      "ending_balance": 75.62,
+      "session_pnl": 0.6,
+      "session_pnl_percent": 0.8,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.97,
+          "entry_time": "2026-04-09 16:13:31",
+          "quantity": 30,
+          "entry_order_id": "2d8027f6-2dcb-4852-a8fb-b7581660ce8f",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-09 16:13:31",
+          "exit_order_id": "50298801-cbe0-4682-a059-83f5255f30db",
+          "pnl": 0.6,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 19,
+      "market_ticker": "KXBTC15M-26APR091630-30",
+      "start_time": "2026-04-09 16:15:41",
+      "end_time": "2026-04-09 16:30:01",
+      "starting_balance": 75.62,
+      "ending_balance": 75.62,
+      "session_pnl": 0.0,
+      "session_pnl_percent": 0.0,
+      "outcome": "No position at close",
+      "trades": []
+    },
+    {
+      "session_number": 21,
+      "market_ticker": "KXBTC15M-26APR091645-45",
+      "start_time": "2026-04-09 16:30:36",
+      "end_time": "2026-04-09 16:45:01",
+      "starting_balance": 75.62,
+      "ending_balance": 76.22,
+      "session_pnl": 0.6,
+      "session_pnl_percent": 0.79,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.97,
+          "entry_time": "2026-04-09 16:40:50",
+          "quantity": 30,
+          "entry_order_id": "bcb2e15e-a03f-430c-a7ce-1bea7d30d0db",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-09 16:41:21",
+          "exit_order_id": "4763923a-0809-408e-abb8-9032b5d40985",
+          "pnl": 0.6,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 23,
+      "market_ticker": "KXBTC15M-26APR091700-00",
+      "start_time": "2026-04-09 16:45:38",
+      "end_time": "2026-04-09 17:00:01",
+      "starting_balance": 76.22,
+      "ending_balance": 74.37,
+      "session_pnl": -1.85,
+      "session_pnl_percent": -2.43,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.97,
+          "entry_time": "2026-04-09 16:57:25",
+          "quantity": 31,
+          "entry_order_id": "0a174332-ffc1-4a71-b853-5015c425bf8d",
+          "exit_price": 0.89,
+          "exit_time": "2026-04-09 16:58:13",
+          "exit_order_id": "cda7382b-a52e-4c26-932a-509b5dbbc7b3",
+          "pnl": -2.48,
+          "status": "CLOSED"
+        },
+        {
+          "side": "no",
+          "entry_price": 0.97,
+          "entry_time": "2026-04-09 16:58:54",
+          "quantity": 30,
+          "entry_order_id": "c3e4ffec-7dad-4643-858b-2acdc135217f",
+          "exit_price": 0.991,
+          "exit_time": "2026-04-09 16:59:01",
+          "exit_order_id": "f6959ac9-2f4e-46a1-819e-5b90fe9815bf",
+          "pnl": 0.63,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 25,
+      "market_ticker": "KXBTC15M-26APR091715-15",
+      "start_time": "2026-04-09 17:00:38",
+      "end_time": "2026-04-09 17:15:01",
+      "starting_balance": 74.35,
+      "ending_balance": 92.83,
+      "session_pnl": 18.48,
+      "session_pnl_percent": 24.86,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.97,
+          "entry_time": "2026-04-09 17:08:01",
+          "quantity": 30,
+          "entry_order_id": "5cab083f-fc08-42e6-9625-7e961cf259f8",
+          "exit_price": 0.85,
+          "exit_time": "2026-04-09 17:08:48",
+          "exit_order_id": "8acfdbf7-643d-4614-a842-d4a2137cd786",
+          "pnl": -3.6,
+          "status": "CLOSED"
+        },
+        {
+          "side": "no",
+          "entry_price": 0.97,
+          "entry_time": "2026-04-09 17:11:35",
+          "quantity": 37,
+          "entry_order_id": "e82566c9-4237-429b-99d7-be3f7ddccb44",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-09 17:12:58",
+          "exit_order_id": "1ed2e87d-63dd-4fcd-abd8-709723cb7326",
+          "pnl": 0.74,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 1,
+      "market_ticker": "KXBTC15M-26APR091730-30",
+      "start_time": "2026-04-09 17:20:15",
+      "end_time": "2026-04-09 17:30:01",
+      "starting_balance": 71.08,
+      "ending_balance": 71.08,
+      "session_pnl": 0.0,
+      "session_pnl_percent": 0.0,
+      "outcome": "No position at close",
+      "trades": []
+    },
+    {
+      "session_number": 1,
+      "market_ticker": "KXBTC15M-26APR091745-45",
+      "start_time": "2026-04-09 17:38:17",
+      "end_time": "2026-04-09 17:45:01",
+      "starting_balance": 71.08,
+      "ending_balance": 71.66,
+      "session_pnl": 0.58,
+      "session_pnl_percent": 0.82,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.97,
+          "entry_time": "2026-04-09 17:41:18",
+          "quantity": 29,
+          "entry_order_id": "011ae506-6fb4-4f37-9cb1-87799ac3c29b",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-09 17:41:22",
+          "exit_order_id": "73c0ec2c-c899-4c24-bc45-417878faf521",
+          "pnl": 0.58,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 3,
+      "market_ticker": "KXBTC15M-26APR091800-00",
+      "start_time": "2026-04-09 17:45:37",
+      "end_time": "2026-04-09 18:00:00",
+      "starting_balance": 71.63,
+      "ending_balance": 72.27,
+      "session_pnl": 0.64,
+      "session_pnl_percent": 0.89,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.97,
+          "entry_time": "2026-04-09 17:56:11",
+          "quantity": 29,
+          "entry_order_id": "accac0a3-e06f-45e7-ade5-13cec2720b26",
+          "exit_price": 0.992,
+          "exit_time": "2026-04-09 17:56:42",
+          "exit_order_id": "1128dbd3-f131-4342-83c7-d7243efb1aa3",
+          "pnl": 0.64,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 5,
+      "market_ticker": "KXBTC15M-26APR091815-15",
+      "start_time": "2026-04-09 18:00:36",
+      "end_time": "2026-04-09 18:15:00",
+      "starting_balance": 72.19,
+      "ending_balance": 97.22,
+      "session_pnl": 25.03,
+      "session_pnl_percent": 34.67,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.97,
+          "entry_time": "2026-04-09 18:10:06",
+          "quantity": 39,
+          "entry_order_id": "a2c729a5-565c-4813-81cc-4a3302e1074b",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-09 18:10:51",
+          "exit_order_id": "c679b4fc-bf30-41f9-b68a-7a98f86b7458",
+          "pnl": 0.78,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 7,
+      "market_ticker": "KXBTC15M-26APR091830-30",
+      "start_time": "2026-04-09 18:15:36",
+      "end_time": "2026-04-09 18:30:01",
+      "starting_balance": 73.72,
+      "ending_balance": 74.32,
+      "session_pnl": 0.6,
+      "session_pnl_percent": 0.81,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.97,
+          "entry_time": "2026-04-09 18:22:50",
+          "quantity": 30,
+          "entry_order_id": "d69c58bc-8ec2-4978-a64d-85dfd538c943",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-09 18:23:43",
+          "exit_order_id": "79ebed32-775b-4740-9626-ebce685964db",
+          "pnl": 0.6,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 1,
+      "market_ticker": "KXBTC15M-26APR091900-00",
+      "start_time": "2026-04-09 18:45:07",
+      "end_time": "2026-04-09 19:00:01",
+      "starting_balance": 75.9,
+      "ending_balance": 76.52,
+      "session_pnl": 0.62,
+      "session_pnl_percent": 0.82,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.97,
+          "entry_time": "2026-04-09 18:56:44",
+          "quantity": 1,
+          "entry_order_id": "7e5c257d-8b62-44c0-8e3b-4eff4e06c657",
+          "exit_price": 0.991,
+          "exit_time": "2026-04-09 18:57:30",
+          "exit_order_id": "2297fe83-ba20-4543-8b30-658705ecce88",
+          "pnl": 0.02,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 3,
+      "market_ticker": "KXBTC15M-26APR091915-15",
+      "start_time": "2026-04-09 19:00:37",
+      "end_time": "2026-04-09 19:15:01",
+      "starting_balance": 76.5,
+      "ending_balance": 77.12,
+      "session_pnl": 0.62,
+      "session_pnl_percent": 0.81,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.97,
+          "entry_time": "2026-04-09 19:12:26",
+          "quantity": 31,
+          "entry_order_id": "2b6976e6-3abd-45c9-a05b-3c9b3bbf3401",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-09 19:12:41",
+          "exit_order_id": "5130d58b-b6a1-4738-96e9-1a88c9532a74",
+          "pnl": 0.62,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 4,
+      "market_ticker": "KXBTC15M-26APR091930-30",
+      "start_time": "2026-04-09 19:15:05",
+      "end_time": "2026-04-09 19:30:01",
+      "starting_balance": 77.12,
+      "ending_balance": 77.86,
+      "session_pnl": 0.74,
+      "session_pnl_percent": 0.96,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.97,
+          "entry_time": "2026-04-09 19:28:51",
+          "quantity": 31,
+          "entry_order_id": "10385331-bfdc-4f5b-a7ac-6d1973a06230",
+          "exit_price": 0.994,
+          "exit_time": "2026-04-09 19:28:55",
+          "exit_order_id": "caa3eea5-e5c2-4cb5-a6c6-dcd0369e0188",
+          "pnl": 0.74,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 6,
+      "market_ticker": "KXBTC15M-26APR091945-45",
+      "start_time": "2026-04-09 19:30:36",
+      "end_time": "2026-04-09 19:45:01",
+      "starting_balance": 77.78,
+      "ending_balance": 78.4,
+      "session_pnl": 0.62,
+      "session_pnl_percent": 0.8,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.97,
+          "entry_time": "2026-04-09 19:44:23",
+          "quantity": 31,
+          "entry_order_id": "077179b8-af2d-4724-a7db-373859254f63",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-09 19:44:28",
+          "exit_order_id": "39cc43c2-68c2-4b43-af68-fe13a36fd576",
+          "pnl": 0.62,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 8,
+      "market_ticker": "KXBTC15M-26APR092000-00",
+      "start_time": "2026-04-09 19:45:36",
+      "end_time": "2026-04-09 20:00:01",
+      "starting_balance": 78.4,
+      "ending_balance": 74.01,
+      "session_pnl": -4.39,
+      "session_pnl_percent": -5.59,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.958,
+          "entry_time": "2026-04-09 19:57:41",
+          "quantity": 32,
+          "entry_order_id": "54d47a01-bc79-4cb4-8c1c-0bcff5e39538",
+          "exit_price": 0.89,
+          "exit_time": "2026-04-09 19:57:55",
+          "exit_order_id": "f24632b9-c6f0-4561-be85-8607334a2207",
+          "pnl": -2.18,
+          "status": "CLOSED"
+        },
+        {
+          "side": "no",
+          "entry_price": 0.97,
+          "entry_time": "2026-04-09 19:58:25",
+          "quantity": 31,
+          "entry_order_id": "19e1d925-bbeb-409b-a8f1-318f8ef75a2c",
+          "exit_price": 0.88,
+          "exit_time": "2026-04-09 19:58:48",
+          "exit_order_id": "affd5202-194b-4a92-9097-66e06768718e",
+          "pnl": -2.79,
+          "status": "CLOSED"
+        },
+        {
+          "side": "no",
+          "entry_price": 0.97,
+          "entry_time": "2026-04-09 19:59:03",
+          "quantity": 29,
+          "entry_order_id": "655ec904-ed27-4a75-9605-af5b311b0e85",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-09 19:59:10",
+          "exit_order_id": "5b223ac7-5b5f-437f-b714-c9380972a467",
+          "pnl": 0.58,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 10,
+      "market_ticker": "KXBTC15M-26APR092015-15",
+      "start_time": "2026-04-09 20:00:37",
+      "end_time": "2026-04-09 20:15:01",
+      "starting_balance": 73.77,
+      "ending_balance": 71.65,
+      "session_pnl": -2.12,
+      "session_pnl_percent": -2.87,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.97,
+          "entry_time": "2026-04-09 20:12:12",
+          "quantity": 30,
+          "entry_order_id": "dffa7c99-d5a4-4b7a-b61a-a5ff961c2867",
+          "exit_price": 0.88,
+          "exit_time": "2026-04-09 20:12:22",
+          "exit_order_id": "ced4de77-840f-43aa-bdb8-af048a62dabe",
+          "pnl": -2.7,
+          "status": "CLOSED"
+        },
+        {
+          "side": "no",
+          "entry_price": 0.97,
+          "entry_time": "2026-04-09 20:14:10",
+          "quantity": 29,
+          "entry_order_id": "57a7dacb-d5ad-488a-a76b-29d4bc7242f7",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-09 20:14:10",
+          "exit_order_id": "1c8a1f20-be97-42eb-b337-e739a597f9a3",
+          "pnl": 0.58,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 1,
+      "market_ticker": "KXBTC15M-26APR092045-45",
+      "start_time": "2026-04-09 20:30:29",
+      "end_time": "2026-04-09 20:45:01",
+      "starting_balance": 68.03,
+      "ending_balance": 68.33,
+      "session_pnl": 0.3,
+      "session_pnl_percent": 0.44,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.98,
+          "entry_time": "2026-04-09 20:40:58",
+          "quantity": 27,
+          "entry_order_id": "72090d49-bc52-44e0-bd65-8c4b41445720",
+          "exit_price": 0.991,
+          "exit_time": "2026-04-09 20:41:21",
+          "exit_order_id": "27f7f492-2dac-439d-ae69-896c47115ba5",
+          "pnl": 0.3,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 3,
+      "market_ticker": "KXBTC15M-26APR092100-00",
+      "start_time": "2026-04-09 20:45:39",
+      "end_time": "2026-04-09 21:00:01",
+      "starting_balance": 68.27,
+      "ending_balance": 93.86,
+      "session_pnl": 25.59,
+      "session_pnl_percent": 37.48,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.959,
+          "entry_time": "2026-04-09 20:59:08",
+          "quantity": 37,
+          "entry_order_id": "6845b145-3d02-4b81-a6d2-47c5c251dc62",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-09 20:59:14",
+          "exit_order_id": "c001260e-4744-4fb5-b538-15e095c665f1",
+          "pnl": 1.15,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 5,
+      "market_ticker": "KXBTC15M-26APR092115-15",
+      "start_time": "2026-04-09 21:00:36",
+      "end_time": "2026-04-09 21:15:01",
+      "starting_balance": 70.0,
+      "ending_balance": 70.28,
+      "session_pnl": 0.28,
+      "session_pnl_percent": 0.4,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.98,
+          "entry_time": "2026-04-09 21:12:09",
+          "quantity": 28,
+          "entry_order_id": "156a9996-14eb-4c4c-971f-01c97bfaed13",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-09 21:12:16",
+          "exit_order_id": "16a777d7-807a-42ba-a673-ca8e38f2afd3",
+          "pnl": 0.28,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 6,
+      "market_ticker": "KXBTC15M-26APR092130-30",
+      "start_time": "2026-04-09 21:15:06",
+      "end_time": "2026-04-09 21:30:01",
+      "starting_balance": 70.28,
+      "ending_balance": 70.56,
+      "session_pnl": 0.28,
+      "session_pnl_percent": 0.4,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.98,
+          "entry_time": "2026-04-09 21:26:46",
+          "quantity": 28,
+          "entry_order_id": "b2bc21f3-c1b7-483f-8531-52f86b49a0f8",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-09 21:26:55",
+          "exit_order_id": "9e0597a6-f2bd-49b7-9843-b6098f91da14",
+          "pnl": 0.28,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 7,
+      "market_ticker": "KXBTC15M-26APR092145-45",
+      "start_time": "2026-04-09 21:30:06",
+      "end_time": "2026-04-09 21:45:01",
+      "starting_balance": 70.56,
+      "ending_balance": 70.84,
+      "session_pnl": 0.28,
+      "session_pnl_percent": 0.4,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.98,
+          "entry_time": "2026-04-09 21:37:22",
+          "quantity": 28,
+          "entry_order_id": "8d9865c9-8841-4b08-8bed-2ec5f8102f60",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-09 21:38:08",
+          "exit_order_id": "cf3fbceb-48ed-43f4-a9a1-836dc1e70c3f",
+          "pnl": 0.28,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 9,
+      "market_ticker": "KXBTC15M-26APR092200-00",
+      "start_time": "2026-04-09 21:45:37",
+      "end_time": "2026-04-09 22:00:01",
+      "starting_balance": 70.84,
+      "ending_balance": 71.15,
+      "session_pnl": 0.31,
+      "session_pnl_percent": 0.43,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.98,
+          "entry_time": "2026-04-09 21:56:34",
+          "quantity": 28,
+          "entry_order_id": "d6487645-9273-48ed-9725-d8bf98635b09",
+          "exit_price": 0.991,
+          "exit_time": "2026-04-09 21:56:56",
+          "exit_order_id": "2241b418-dc97-4d94-9ce8-f8c405990e77",
+          "pnl": 0.31,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 11,
+      "market_ticker": "KXBTC15M-26APR092215-15",
+      "start_time": "2026-04-09 22:00:37",
+      "end_time": "2026-04-09 22:15:01",
+      "starting_balance": 71.07,
+      "ending_balance": 64.63,
+      "session_pnl": -6.44,
+      "session_pnl_percent": -9.06,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.98,
+          "entry_time": "2026-04-09 22:11:51",
+          "quantity": 28,
+          "entry_order_id": "d2dc0f11-f44f-45cc-9353-59216b14251d",
+          "exit_price": 0.75,
+          "exit_time": "2026-04-09 22:12:16",
+          "exit_order_id": "ecb3adfc-dcdf-422f-be31-b81abfabceb7",
+          "pnl": -6.44,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 13,
+      "market_ticker": "KXBTC15M-26APR092230-30",
+      "start_time": "2026-04-09 22:15:37",
+      "end_time": "2026-04-09 22:30:01",
+      "starting_balance": 64.63,
+      "ending_balance": 65.07,
+      "session_pnl": 0.44,
+      "session_pnl_percent": 0.68,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.973,
+          "entry_time": "2026-04-09 22:28:21",
+          "quantity": 26,
+          "entry_order_id": "dfc6e762-0288-4491-a4f5-68f17665f0d7",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-09 22:28:43",
+          "exit_order_id": "13100040-9d52-45a0-8429-de15c46d9890",
+          "pnl": 0.44,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 15,
+      "market_ticker": "KXBTC15M-26APR092245-45",
+      "start_time": "2026-04-09 22:30:36",
+      "end_time": "2026-04-09 22:45:00",
+      "starting_balance": 65.02,
+      "ending_balance": 65.28,
+      "session_pnl": 0.26,
+      "session_pnl_percent": 0.4,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.98,
+          "entry_time": "2026-04-09 22:43:34",
+          "quantity": 26,
+          "entry_order_id": "89c2478f-b549-4248-afb5-6daf4f33d206",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-09 22:43:38",
+          "exit_order_id": "07b41d8b-a60b-428a-83f0-5c5a5d9479a0",
+          "pnl": 0.26,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 17,
+      "market_ticker": "KXBTC15M-26APR092300-00",
+      "start_time": "2026-04-09 22:45:37",
+      "end_time": "2026-04-09 23:00:01",
+      "starting_balance": 65.28,
+      "ending_balance": 68.49,
+      "session_pnl": 3.21,
+      "session_pnl_percent": 4.92,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.98,
+          "entry_time": "2026-04-09 22:53:12",
+          "quantity": 27,
+          "entry_order_id": "c7832fc9-1bb9-4d98-bb2e-91c7083e91a5",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-09 22:55:51",
+          "exit_order_id": "07533611-98e9-44e9-821e-aff812578476",
+          "pnl": 0.27,
+          "status": "CLOSED"
+        }
+      ]
+    }
+  ]
+}
