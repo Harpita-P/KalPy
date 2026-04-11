@@ -1,1 +1,3 @@
 market_ticker,session_start_time,market_close_time,reached_time,reached_side,reached_price,dropped_time,dropped_side,dropped_price
+KXBTC15M-26APR101645-45,2026-04-10 16:30:33,2026-04-10T20:45:00Z,2026-04-10 16:42:30,NO,0.98,2026-04-10 16:43:39,NO,0.87
+KXBTC15M-26APR101915-15,2026-04-10 19:00:11,2026-04-10T23:15:00Z,2026-04-10 19:11:45,NO,0.98,2026-04-10 19:13:14,NO,0.86

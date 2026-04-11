@@ -28,7 +28,7 @@ if not API_KEY_ID or not PRIVATE_KEY_PATH or not BASE_URL:
 
 # Trading parameters - SAFETY FIRST: 2% position sizing
 ENTRY_TRIGGER = 0.98  # Enter when ask >= 98 cents
-EXIT_TRIGGER = 0.88  # Exit when price falls to 88 cents
+EXIT_TRIGGER = 0.80  # Exit when price falls to 80 cents
 POSITION_SIZE_PCT = 0.40  # Use 40% of account balance
 TRADING_DELAY_MINUTES = 8  # Only trade when 8 minutes or less remain
 MINIMUM_ACCOUNT_BALANCE = 50.00  # Minimum balance required to continue trading
@@ -320,6 +320,12 @@ def text_contains_btc(*values) -> bool:
     return any(k in text for k in keywords)
 
 
+def text_contains_eth(*values) -> bool:
+    text = " ".join(str(v or "") for v in values).lower()
+    keywords = ["eth", "ethereum", "kxeth"]
+    return any(k in text for k in keywords)
+
+
 def milestone_related_event_ticker(m: dict) -> str | None:
     related = m.get("related_event_tickers") or []
     primary = m.get("primary_event_tickers") or []
@@ -422,6 +428,72 @@ def find_latest_btc15m_market(client: KalshiClient) -> str | None:
     print(f"Found active market: {ticker}")
     print(f"Close time: {selected.get('close_time')}")
     
+    return ticker
+
+
+def find_latest_eth15m_market(client: KalshiClient) -> str | None:
+    print("Finding latest ETH 15-minute market...")
+
+    data = client.get_milestones(category="Crypto", limit=200)
+    milestones = data.get("milestones", [])
+
+    eth_milestones = [
+        m
+        for m in milestones
+        if text_contains_eth(
+            m.get("title"),
+            m.get("category"),
+            m.get("related_event_tickers"),
+            m.get("primary_event_tickers"),
+        )
+    ]
+
+    if not eth_milestones:
+        print("No ETH milestones found.")
+        return None
+
+    eth_milestones.sort(key=milestone_priority, reverse=True)
+    chosen_milestone = eth_milestones[0]
+
+    print(f"Selected milestone: {chosen_milestone.get('title')}")
+
+    related_event = milestone_related_event_ticker(chosen_milestone)
+    if not related_event:
+        print("No related event ticker found.")
+        return None
+
+    event_payload = client.get_event_with_markets(related_event)
+    event_obj = event_payload.get("event", {})
+    nested_markets = event_obj.get("markets", []) or event_payload.get("markets", [])
+
+    if not nested_markets:
+        print("No markets found for this event.")
+        return None
+
+    eth15m_markets = [
+        m
+        for m in nested_markets
+        if (m.get("event_ticker") or "").upper().startswith("KXETH15M")
+        or (m.get("ticker") or "").upper().startswith("KXETH15M")
+    ]
+
+    active_markets = [m for m in eth15m_markets if (m.get("status") or "").lower() == "active"]
+
+    if not active_markets:
+        print("No active ETH 15-minute markets found.")
+        return None
+
+    active_markets.sort(
+        key=lambda m: (
+            m.get("close_time") or "9999-12-31T23:59:59Z",
+            m.get("ticker") or "",
+        )
+    )
+
+    selected = active_markets[0]
+    ticker = selected["ticker"]
+    print(f"Found active market: {ticker}")
+    print(f"Close time: {selected.get('close_time')}")
     return ticker
 
 
@@ -876,7 +948,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                                     print(f"DEBUG: Match: {first_fill.get('order_id') == pending_entry_order_id}")
                             
                             total_filled = 0
-                            avg_fill_price = 0
+                            fill_price_sum = 0.0
                             for fill in fills:
                                 if fill.get("order_id") == pending_entry_order_id:
                                     # Kalshi API returns: count_fp (string), yes_price_dollars/no_price_dollars (string in dollars)
@@ -884,10 +956,15 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                                     total_filled += count
                                     if pending_entry_side == "yes":
                                         price_dollars = fill.get("yes_price_dollars", "0")
-                                        avg_fill_price = safe_float(price_dollars)
+                                        price = safe_float(price_dollars)
                                     else:
                                         price_dollars = fill.get("no_price_dollars", "0")
-                                        avg_fill_price = safe_float(price_dollars)
+                                        price = safe_float(price_dollars)
+
+                                    if price is not None and count > 0:
+                                        fill_price_sum += price * count
+
+                            avg_fill_price = (fill_price_sum / total_filled) if total_filled > 0 else None
                             
                             # Check if order is partially filled or taking too long
                             time_since_order = (datetime.now() - pending_entry_time).total_seconds() if pending_entry_time else 0
@@ -939,13 +1016,20 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                                 
                                 violations = []
                                 
-                                # Check 1: Entry price must be >= 0.95 (allowing small slippage from 0.98)
-                                if avg_fill_price < 0.95:
-                                    violations.append(f"Entry price {fmt_cents(avg_fill_price)} is below minimum 95¢ (expected >= 98¢)")
+                                # Check 1: Entry price must not be WORSE than our limit (higher cost is worse for a buy).
+                                if avg_fill_price is None:
+                                    violations.append("Entry fill price missing/invalid")
+                                elif avg_fill_price > ENTRY_TRIGGER:
+                                    violations.append(
+                                        f"Entry price {fmt_cents(avg_fill_price)} is worse than limit {fmt_cents(ENTRY_TRIGGER)}"
+                                    )
                                 
-                                # Check 2: Position size must be approximately 40% of balance
-                                if cost < min_allowed or cost > max_allowed:
-                                    violations.append(f"Position cost ${cost:.2f} is outside allowed range ${min_allowed:.2f}-${max_allowed:.2f} (should be ~40% of ${balance_before_trade:.2f})")
+                                # Check 2: Don't allow overspending beyond target sizing.
+                                # Underspending can happen from price improvement (fills below our limit) and is OK.
+                                if cost > max_allowed:
+                                    violations.append(
+                                        f"Position cost ${cost:.2f} exceeds allowed max ${max_allowed:.2f} (should be ~40% of ${balance_before_trade:.2f})"
+                                    )
                                 
                                 if violations:
                                     print("\n" + "!" * 80)
@@ -1107,7 +1191,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                                 except Exception as e:
                                     print(f"[{now}] ERROR placing emergency exit order: {e}")
 
-                        # Fixed exit at 88¢
+                        # Fixed exit at 80¢
                         if current_price is not None and current_price <= EXIT_TRIGGER:
                             price_cents = int(current_price * 100)
 
@@ -1391,10 +1475,10 @@ async def main_loop():
             except Exception as e:
                 print(f"Could not refresh balance: {e}, using previous: {fmt_dollars(balance)}\n")
         
-        ticker = find_latest_btc15m_market(client)
+        ticker = find_latest_eth15m_market(client)
 
         if not ticker:
-            print("\nCould not find an active BTC 15-minute market.")
+            print("\nCould not find an active ETH 15-minute market.")
             print("Waiting 30 seconds before trying again...\n")
             await asyncio.sleep(30)
             continue

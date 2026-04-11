@@ -114,16 +114,21 @@ def qualifies_transition(state: RoundState, yes_ask_f: float | None, no_ask: flo
             state.reached_price = no_ask
 
     if state.reached and not state.dropped:
-        if yes_ask_f is not None and yes_ask_f <= DROP_LEVEL:
-            state.dropped = True
-            state.dropped_time = now_str
-            state.dropped_side = "YES"
-            state.dropped_price = yes_ask_f
-        elif no_ask is not None and no_ask <= DROP_LEVEL:
-            state.dropped = True
-            state.dropped_time = now_str
-            state.dropped_side = "NO"
-            state.dropped_price = no_ask
+        if now_str == state.reached_time:
+            return
+
+        if state.reached_side == "YES":
+            if yes_ask_f is not None and yes_ask_f <= DROP_LEVEL:
+                state.dropped = True
+                state.dropped_time = now_str
+                state.dropped_side = "YES"
+                state.dropped_price = yes_ask_f
+        elif state.reached_side == "NO":
+            if no_ask is not None and no_ask <= DROP_LEVEL:
+                state.dropped = True
+                state.dropped_time = now_str
+                state.dropped_side = "NO"
+                state.dropped_price = no_ask
 
 
 async def monitor_single_market(client: KalshiClient, market_ticker: str) -> None:

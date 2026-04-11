@@ -1814,6 +1814,1114 @@
           "status": "CLOSED"
         }
       ]
+    },
+    {
+      "session_number": 1,
+      "market_ticker": "KXBTC15M-26APR102145-45",
+      "start_time": "2026-04-10 21:36:00",
+      "end_time": "2026-04-10 21:45:10",
+      "starting_balance": 65.8,
+      "ending_balance": 90.7,
+      "session_pnl": 24.9,
+      "session_pnl_percent": 37.84,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.979,
+          "entry_time": "2026-04-10 21:41:27",
+          "quantity": 36,
+          "entry_order_id": "846a5b3f-d128-4c6e-a52d-69a592588ade",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-10 21:41:50",
+          "exit_order_id": "b0133f3f-a75b-4881-a3bf-69ee94a462ce",
+          "pnl": 0.4,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 2,
+      "market_ticker": "KXBTC15M-26APR102200-00",
+      "start_time": "2026-04-10 21:45:18",
+      "end_time": "2026-04-10 22:00:10",
+      "starting_balance": 66.62,
+      "ending_balance": 66.89,
+      "session_pnl": 0.27,
+      "session_pnl_percent": 0.41,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.98,
+          "entry_time": "2026-04-10 21:55:11",
+          "quantity": 27,
+          "entry_order_id": "0bfbd0dd-ca7f-478e-955e-c64ada07d8de",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-10 21:57:24",
+          "exit_order_id": "656bbf2e-6be6-40ea-93ea-0b7156215fda",
+          "pnl": 0.27,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 3,
+      "market_ticker": "KXBTC15M-26APR102215-15",
+      "start_time": "2026-04-10 22:00:15",
+      "end_time": "2026-04-10 22:15:00",
+      "starting_balance": 66.88,
+      "ending_balance": 67.15,
+      "session_pnl": 0.27,
+      "session_pnl_percent": 0.4,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.98,
+          "entry_time": "2026-04-10 22:13:19",
+          "quantity": 27,
+          "entry_order_id": "294055cc-ced9-4b5e-8a48-d719afb88619",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-10 22:13:19",
+          "exit_order_id": "1b6026ed-e46f-40d6-b84b-2a32226b0f52",
+          "pnl": 0.27,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 6,
+      "market_ticker": "KXBTC15M-26APR102230-30",
+      "start_time": "2026-04-10 22:16:08",
+      "end_time": "2026-04-10 22:30:10",
+      "starting_balance": 67.15,
+      "ending_balance": 94.51,
+      "session_pnl": 27.36,
+      "session_pnl_percent": 40.75,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.929,
+          "entry_time": "2026-04-10 22:27:02",
+          "quantity": 27,
+          "entry_order_id": "ca9dcfbc-ec5f-43f3-b8f1-1646819fa926",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-10 22:27:58",
+          "exit_order_id": "a7a88a42-d10f-477c-b76f-756e1ec16cfe",
+          "pnl": 1.65,
+          "status": "CLOSED"
+        },
+        {
+          "side": "yes",
+          "entry_price": 0.929,
+          "entry_time": "2026-04-10 22:28:02",
+          "quantity": 27,
+          "entry_order_id": "ca9dcfbc-ec5f-43f3-b8f1-1646819fa926",
+          "exit_price": 0.991,
+          "exit_time": "2026-04-10 22:28:02",
+          "exit_order_id": "2f1d4123-a0cc-412f-99c2-05facafacbf2",
+          "pnl": 1.67,
+          "status": "CLOSED"
+        },
+        {
+          "side": "yes",
+          "entry_price": 0.929,
+          "entry_time": "2026-04-10 22:28:07",
+          "quantity": 27,
+          "entry_order_id": "ca9dcfbc-ec5f-43f3-b8f1-1646819fa926",
+          "exit_price": 0.991,
+          "exit_time": "2026-04-10 22:28:07",
+          "exit_order_id": "47005133-6bbc-418f-9d8a-6c19d0fe824c",
+          "pnl": 1.67,
+          "status": "CLOSED"
+        },
+        {
+          "side": "yes",
+          "entry_price": 0.929,
+          "entry_time": "2026-04-10 22:28:13",
+          "quantity": 27,
+          "entry_order_id": "ca9dcfbc-ec5f-43f3-b8f1-1646819fa926",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-10 22:28:18",
+          "exit_order_id": "139c6e35-cd52-4301-99d6-4a9435787fe1",
+          "pnl": 1.65,
+          "status": "CLOSED"
+        },
+        {
+          "side": "yes",
+          "entry_price": 0.929,
+          "entry_time": "2026-04-10 22:28:21",
+          "quantity": 5,
+          "entry_order_id": "ca9dcfbc-ec5f-43f3-b8f1-1646819fa926",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-10 22:28:31",
+          "exit_order_id": "c1b364a8-c2db-48ed-bb99-d4dd38961185",
+          "pnl": 0.3,
+          "status": "CLOSED"
+        },
+        {
+          "side": "yes",
+          "entry_price": 0.929,
+          "entry_time": "2026-04-10 22:28:34",
+          "quantity": 27,
+          "entry_order_id": "ca9dcfbc-ec5f-43f3-b8f1-1646819fa926",
+          "exit_price": 0.992,
+          "exit_time": "2026-04-10 22:28:34",
+          "exit_order_id": "0e79ac68-cc8a-446f-9e9b-f19f6cca258b",
+          "pnl": 1.7,
+          "status": "CLOSED"
+        },
+        {
+          "side": "yes",
+          "entry_price": 0.929,
+          "entry_time": "2026-04-10 22:28:39",
+          "quantity": 27,
+          "entry_order_id": "ca9dcfbc-ec5f-43f3-b8f1-1646819fa926",
+          "exit_price": 0.991,
+          "exit_time": "2026-04-10 22:28:39",
+          "exit_order_id": "2af58ded-f9f2-4186-b034-1b72d7c5042c",
+          "pnl": 1.67,
+          "status": "CLOSED"
+        },
+        {
+          "side": "yes",
+          "entry_price": 0.929,
+          "entry_time": "2026-04-10 22:28:44",
+          "quantity": 27,
+          "entry_order_id": "ca9dcfbc-ec5f-43f3-b8f1-1646819fa926",
+          "exit_price": 0.991,
+          "exit_time": "2026-04-10 22:28:44",
+          "exit_order_id": "43a510ab-92f6-4ac4-9c38-6ff189dfd2b3",
+          "pnl": 1.67,
+          "status": "CLOSED"
+        },
+        {
+          "side": "yes",
+          "entry_price": 0.929,
+          "entry_time": "2026-04-10 22:28:49",
+          "quantity": 27,
+          "entry_order_id": "ca9dcfbc-ec5f-43f3-b8f1-1646819fa926",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-10 22:28:49",
+          "exit_order_id": "18c358c0-f65b-42b5-a3a0-75d49e2ddb6f",
+          "pnl": 1.65,
+          "status": "CLOSED"
+        },
+        {
+          "side": "yes",
+          "entry_price": 0.929,
+          "entry_time": "2026-04-10 22:28:55",
+          "quantity": 27,
+          "entry_order_id": "ca9dcfbc-ec5f-43f3-b8f1-1646819fa926",
+          "exit_price": 0.991,
+          "exit_time": "2026-04-10 22:28:55",
+          "exit_order_id": "422d625b-6e29-498b-822e-48596b9eafc3",
+          "pnl": 1.67,
+          "status": "CLOSED"
+        },
+        {
+          "side": "yes",
+          "entry_price": 0.929,
+          "entry_time": "2026-04-10 22:29:00",
+          "quantity": 27,
+          "entry_order_id": "ca9dcfbc-ec5f-43f3-b8f1-1646819fa926",
+          "exit_price": 0.991,
+          "exit_time": "2026-04-10 22:29:05",
+          "exit_order_id": "7f95e4d8-e11b-4e5b-9c48-a6f8923fd4a5",
+          "pnl": 1.67,
+          "status": "CLOSED"
+        },
+        {
+          "side": "yes",
+          "entry_price": 0.929,
+          "entry_time": "2026-04-10 22:29:09",
+          "quantity": 27,
+          "entry_order_id": "ca9dcfbc-ec5f-43f3-b8f1-1646819fa926",
+          "exit_price": 0.9965,
+          "exit_time": "2026-04-10 22:29:09",
+          "exit_order_id": "9fd98d65-d5dc-4083-a31b-b46fed72b216",
+          "pnl": 1.82,
+          "status": "CLOSED"
+        },
+        {
+          "side": "yes",
+          "entry_price": 0.929,
+          "entry_time": "2026-04-10 22:29:14",
+          "quantity": 27,
+          "entry_order_id": "ca9dcfbc-ec5f-43f3-b8f1-1646819fa926",
+          "exit_price": 0.995,
+          "exit_time": "2026-04-10 22:29:14",
+          "exit_order_id": "f32b6572-ad7b-4269-8e13-0c995c29291c",
+          "pnl": 1.78,
+          "status": "CLOSED"
+        },
+        {
+          "side": "yes",
+          "entry_price": 0.929,
+          "entry_time": "2026-04-10 22:29:19",
+          "quantity": 27,
+          "entry_order_id": "ca9dcfbc-ec5f-43f3-b8f1-1646819fa926",
+          "exit_price": 0.998,
+          "exit_time": "2026-04-10 22:29:19",
+          "exit_order_id": "0965f9ce-47dc-4e80-9063-fe0b7e986298",
+          "pnl": 1.86,
+          "status": "CLOSED"
+        },
+        {
+          "side": "yes",
+          "entry_price": 0.929,
+          "entry_time": "2026-04-10 22:29:25",
+          "quantity": 27,
+          "entry_order_id": "ca9dcfbc-ec5f-43f3-b8f1-1646819fa926",
+          "exit_price": 0.995,
+          "exit_time": "2026-04-10 22:29:25",
+          "exit_order_id": "4fff7f03-52e4-46d2-a16e-f013efb93f92",
+          "pnl": 1.78,
+          "status": "CLOSED"
+        },
+        {
+          "side": "yes",
+          "entry_price": 0.929,
+          "entry_time": "2026-04-10 22:29:30",
+          "quantity": 27,
+          "entry_order_id": "ca9dcfbc-ec5f-43f3-b8f1-1646819fa926",
+          "exit_price": 0.995,
+          "exit_time": "2026-04-10 22:29:30",
+          "exit_order_id": "1ca26098-71e6-4adf-81e3-d65302d67888",
+          "pnl": 1.78,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 7,
+      "market_ticker": "KXBTC15M-26APR102245-45",
+      "start_time": "2026-04-10 22:30:15",
+      "end_time": "2026-04-10 22:45:00",
+      "starting_balance": 65.39,
+      "ending_balance": 61.23,
+      "session_pnl": -4.16,
+      "session_pnl_percent": -6.36,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.98,
+          "entry_time": "2026-04-10 22:42:11",
+          "quantity": 26,
+          "entry_order_id": "f8c0b2f6-c0ed-404f-812f-b2e821e48ca3",
+          "exit_price": 0.81,
+          "exit_time": "2026-04-10 22:43:04",
+          "exit_order_id": "15f230e0-cef3-4463-93de-f031b541fef8",
+          "pnl": -4.42,
+          "status": "CLOSED"
+        },
+        {
+          "side": "yes",
+          "entry_price": 0.979,
+          "entry_time": "2026-04-10 22:44:17",
+          "quantity": 1,
+          "entry_order_id": "da8f46a7-bae7-4875-8fcf-f5b327036054",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-10 22:44:39",
+          "exit_order_id": "cf20e488-ad7f-4e0a-89bc-6fbd6ac0d6c8",
+          "pnl": 0.01,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 1,
+      "market_ticker": "KXETH15M-26APR102330-30",
+      "start_time": "2026-04-10 23:19:52",
+      "end_time": "2026-04-10 23:30:00",
+      "starting_balance": 61.63,
+      "ending_balance": 61.88,
+      "session_pnl": 0.25,
+      "session_pnl_percent": 0.41,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.98,
+          "entry_time": "2026-04-10 23:27:18",
+          "quantity": 25,
+          "entry_order_id": "33b6159a-3811-4dcd-a72b-90c564c4300b",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-10 23:28:51",
+          "exit_order_id": "4238c26a-2dee-440a-8616-a2e8c146bca7",
+          "pnl": 0.25,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 1,
+      "market_ticker": "KXETH15M-26APR102345-45",
+      "start_time": "2026-04-10 23:44:33",
+      "end_time": "2026-04-10 23:45:01",
+      "starting_balance": 62.1,
+      "ending_balance": 62.1,
+      "session_pnl": 0.0,
+      "session_pnl_percent": 0.0,
+      "outcome": "No position at close",
+      "trades": []
+    },
+    {
+      "session_number": 2,
+      "market_ticker": "KXETH15M-26APR110000-00",
+      "start_time": "2026-04-10 23:45:05",
+      "end_time": "2026-04-11 00:00:10",
+      "starting_balance": 62.1,
+      "ending_balance": 62.1,
+      "session_pnl": 0.0,
+      "session_pnl_percent": 0.0,
+      "outcome": "No position at close",
+      "trades": []
+    },
+    {
+      "session_number": 1,
+      "market_ticker": "KXETH15M-26APR111030-30",
+      "start_time": "2026-04-11 10:28:53",
+      "end_time": "2026-04-11 10:30:02",
+      "starting_balance": 62.69,
+      "ending_balance": 65.69,
+      "session_pnl": 3.0,
+      "session_pnl_percent": 4.79,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.87,
+          "entry_time": "2026-04-11 10:29:50",
+          "quantity": 25,
+          "entry_order_id": "a21a8d99-2c6b-4829-ae4a-dcf335687209",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-11 10:29:59",
+          "exit_order_id": "d5fe9b36-cf05-4373-9669-4ce524b772ca",
+          "pnl": 3.0,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 1,
+      "market_ticker": "KXETH15M-26APR111100-00",
+      "start_time": "2026-04-11 10:45:19",
+      "end_time": "2026-04-11 11:00:00",
+      "starting_balance": 63.95,
+      "ending_balance": 88.81,
+      "session_pnl": 24.86,
+      "session_pnl_percent": 38.87,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.98,
+          "entry_time": "2026-04-11 10:55:44",
+          "quantity": 1,
+          "entry_order_id": "3f3b5a82-dfc5-4335-823c-2b7277603299",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-11 10:57:29",
+          "exit_order_id": "30750e5e-69ab-4758-bd2b-d067e4efc5c6",
+          "pnl": 0.01,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 3,
+      "market_ticker": "KXETH15M-26APR111115-15",
+      "start_time": "2026-04-11 11:00:34",
+      "end_time": "2026-04-11 11:15:00",
+      "starting_balance": 64.75,
+      "ending_balance": 65.01,
+      "session_pnl": 0.26,
+      "session_pnl_percent": 0.4,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.98,
+          "entry_time": "2026-04-11 11:14:29",
+          "quantity": 26,
+          "entry_order_id": "55ecf9b5-4693-4792-a790-5e0f0886b738",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-11 11:14:29",
+          "exit_order_id": "84bbe482-2caf-4599-93f4-467ef45f3c39",
+          "pnl": 0.26,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 1,
+      "market_ticker": "KXETH15M-26APR111245-45",
+      "start_time": "2026-04-11 12:33:18",
+      "end_time": "2026-04-11 12:45:00",
+      "starting_balance": 61.07,
+      "ending_balance": 61.35,
+      "session_pnl": 0.28,
+      "session_pnl_percent": 0.45,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.98,
+          "entry_time": "2026-04-11 12:39:13",
+          "quantity": 24,
+          "entry_order_id": "ca4b0b22-30f2-471d-95c3-24c2b31a4a3f",
+          "exit_price": 0.9915,
+          "exit_time": "2026-04-11 12:39:16",
+          "exit_order_id": "995dcb4b-25e8-4a04-834b-277e3a5dc3a4",
+          "pnl": 0.28,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 3,
+      "market_ticker": "KXETH15M-26APR111300-00",
+      "start_time": "2026-04-11 12:45:35",
+      "end_time": "2026-04-11 13:00:11",
+      "starting_balance": 61.28,
+      "ending_balance": 61.52,
+      "session_pnl": 0.24,
+      "session_pnl_percent": 0.39,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.98,
+          "entry_time": "2026-04-11 12:57:57",
+          "quantity": 24,
+          "entry_order_id": "0eff2166-be6d-40ce-ab8d-6b9899084d5e",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-11 12:58:04",
+          "exit_order_id": "7ff624e3-78ab-4e2f-babb-ca4f5d6cbd91",
+          "pnl": 0.24,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 4,
+      "market_ticker": "KXETH15M-26APR111315-15",
+      "start_time": "2026-04-11 13:00:15",
+      "end_time": "2026-04-11 13:15:00",
+      "starting_balance": 61.52,
+      "ending_balance": 104.64,
+      "session_pnl": 43.12,
+      "session_pnl_percent": 70.09,
+      "outcome": "No position at close",
+      "trades": []
+    },
+    {
+      "session_number": 6,
+      "market_ticker": "KXETH15M-26APR111330-30",
+      "start_time": "2026-04-11 13:15:36",
+      "end_time": "2026-04-11 13:30:00",
+      "starting_balance": 62.38,
+      "ending_balance": 62.63,
+      "session_pnl": 0.25,
+      "session_pnl_percent": 0.4,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.98,
+          "entry_time": "2026-04-11 13:29:17",
+          "quantity": 25,
+          "entry_order_id": "b384b0dc-d94c-428d-9851-a9011b800e05",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-11 13:29:22",
+          "exit_order_id": "087fa57a-165a-4de3-a8ee-ac9e86f8324f",
+          "pnl": 0.25,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 8,
+      "market_ticker": "KXETH15M-26APR111345-45",
+      "start_time": "2026-04-11 13:30:37",
+      "end_time": "2026-04-11 13:45:00",
+      "starting_balance": 62.63,
+      "ending_balance": 62.93,
+      "session_pnl": 0.3,
+      "session_pnl_percent": 0.48,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.978,
+          "entry_time": "2026-04-11 13:40:13",
+          "quantity": 25,
+          "entry_order_id": "a16f1d56-f9e2-4be5-b78b-14777b9ef14d",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-11 13:41:21",
+          "exit_order_id": "4dbdc5a7-9dd1-4480-a2bf-c2a51566b6fc",
+          "pnl": 0.3,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 10,
+      "market_ticker": "KXETH15M-26APR111400-00",
+      "start_time": "2026-04-11 13:45:35",
+      "end_time": "2026-04-11 14:00:00",
+      "starting_balance": 62.89,
+      "ending_balance": 63.14,
+      "session_pnl": 0.25,
+      "session_pnl_percent": 0.4,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.98,
+          "entry_time": "2026-04-11 13:54:57",
+          "quantity": 25,
+          "entry_order_id": "5f583e7a-24b1-4cba-880b-3acb84f950d8",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-11 13:56:06",
+          "exit_order_id": "bf0a5e8a-fd54-4316-8bfd-1a3fcedcde98",
+          "pnl": 0.25,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 12,
+      "market_ticker": "KXETH15M-26APR111415-15",
+      "start_time": "2026-04-11 14:00:36",
+      "end_time": "2026-04-11 14:15:00",
+      "starting_balance": 63.1,
+      "ending_balance": 63.35,
+      "session_pnl": 0.25,
+      "session_pnl_percent": 0.4,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.98,
+          "entry_time": "2026-04-11 14:13:54",
+          "quantity": 16,
+          "entry_order_id": "e8b9d10a-5876-4008-8c6d-457c62af4e3f",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-11 14:14:13",
+          "exit_order_id": "d3188758-04a6-4ffe-8bcf-6bc6d81dc9db",
+          "pnl": 0.16,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 14,
+      "market_ticker": "KXETH15M-26APR111430-30",
+      "start_time": "2026-04-11 14:15:36",
+      "end_time": "2026-04-11 14:30:00",
+      "starting_balance": 63.14,
+      "ending_balance": 63.39,
+      "session_pnl": 0.25,
+      "session_pnl_percent": 0.4,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.98,
+          "entry_time": "2026-04-11 14:25:17",
+          "quantity": 25,
+          "entry_order_id": "4649710c-5f9d-497c-ad47-7faaa8cac363",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-11 14:25:32",
+          "exit_order_id": "dd674784-bbfa-40ce-8f26-d7d04fe8d1fa",
+          "pnl": 0.25,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 16,
+      "market_ticker": "KXETH15M-26APR111445-45",
+      "start_time": "2026-04-11 14:30:36",
+      "end_time": "2026-04-11 14:45:00",
+      "starting_balance": 63.35,
+      "ending_balance": 63.35,
+      "session_pnl": 0.0,
+      "session_pnl_percent": 0.0,
+      "outcome": "No position at close",
+      "trades": []
+    },
+    {
+      "session_number": 18,
+      "market_ticker": "KXETH15M-26APR111500-00",
+      "start_time": "2026-04-11 14:45:38",
+      "end_time": "2026-04-11 15:00:00",
+      "starting_balance": 63.35,
+      "ending_balance": 120.19,
+      "session_pnl": 56.84,
+      "session_pnl_percent": 89.72,
+      "outcome": "No position at close",
+      "trades": []
+    },
+    {
+      "session_number": 20,
+      "market_ticker": "KXETH15M-26APR111515-15",
+      "start_time": "2026-04-11 15:00:38",
+      "end_time": "2026-04-11 15:15:01",
+      "starting_balance": 64.46,
+      "ending_balance": 64.72,
+      "session_pnl": 0.26,
+      "session_pnl_percent": 0.4,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.98,
+          "entry_time": "2026-04-11 15:08:26",
+          "quantity": 26,
+          "entry_order_id": "6cf9e6ec-cbe9-448e-8e43-45b760865bb0",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-11 15:09:39",
+          "exit_order_id": "eaeebafe-b234-4eef-af35-8fd8f719fdc5",
+          "pnl": 0.26,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 22,
+      "market_ticker": "KXETH15M-26APR111530-30",
+      "start_time": "2026-04-11 15:15:37",
+      "end_time": "2026-04-11 15:30:00",
+      "starting_balance": 64.72,
+      "ending_balance": 66.94,
+      "session_pnl": 2.22,
+      "session_pnl_percent": 3.43,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.98,
+          "entry_time": "2026-04-11 15:28:19",
+          "quantity": 26,
+          "entry_order_id": "7c07f7d7-5f70-4457-8363-f87340cd0a40",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-11 15:28:46",
+          "exit_order_id": "3f855c57-7c99-4a20-a0d7-7ca560740e2a",
+          "pnl": 0.26,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 24,
+      "market_ticker": "KXETH15M-26APR111545-45",
+      "start_time": "2026-04-11 15:30:35",
+      "end_time": "2026-04-11 15:45:01",
+      "starting_balance": 65.02,
+      "ending_balance": 65.27,
+      "session_pnl": 0.25,
+      "session_pnl_percent": 0.38,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.98,
+          "entry_time": "2026-04-11 15:43:04",
+          "quantity": 1,
+          "entry_order_id": "4bd8f82f-6216-4a41-b9ef-0fd677fd4f16",
+          "exit_price": 0.98,
+          "exit_time": "2026-04-11 15:44:07",
+          "exit_order_id": "6ae90213-f32b-42fb-9c28-ebce1bf9b660",
+          "pnl": 0.0,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 26,
+      "market_ticker": "KXETH15M-26APR111600-00",
+      "start_time": "2026-04-11 15:45:37",
+      "end_time": "2026-04-11 16:00:00",
+      "starting_balance": 65.2,
+      "ending_balance": 65.46,
+      "session_pnl": 0.26,
+      "session_pnl_percent": 0.4,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.98,
+          "entry_time": "2026-04-11 15:54:33",
+          "quantity": 26,
+          "entry_order_id": "8007a2e3-6b78-4d66-b4c2-6e572849e0a3",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-11 15:54:49",
+          "exit_order_id": "b16dfc7d-843f-4a89-bfb8-066be657f733",
+          "pnl": 0.26,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 28,
+      "market_ticker": "KXETH15M-26APR111615-15",
+      "start_time": "2026-04-11 16:00:36",
+      "end_time": "2026-04-11 16:15:01",
+      "starting_balance": 65.46,
+      "ending_balance": 65.73,
+      "session_pnl": 0.27,
+      "session_pnl_percent": 0.42,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.98,
+          "entry_time": "2026-04-11 16:10:22",
+          "quantity": 11,
+          "entry_order_id": "9622e756-a677-4dbc-9e0f-f9b819b89393",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-11 16:10:48",
+          "exit_order_id": "cc614150-e2f2-431f-bb2b-a5b7ecbcbda0",
+          "pnl": 0.11,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 30,
+      "market_ticker": "KXETH15M-26APR111630-30",
+      "start_time": "2026-04-11 16:15:36",
+      "end_time": "2026-04-11 16:30:00",
+      "starting_balance": 65.61,
+      "ending_balance": 65.86,
+      "session_pnl": 0.25,
+      "session_pnl_percent": 0.38,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.98,
+          "entry_time": "2026-04-11 16:24:02",
+          "quantity": 1,
+          "entry_order_id": "4f17e6d2-fdc1-4312-9161-2145c0e45b20",
+          "exit_price": 0.98,
+          "exit_time": "2026-04-11 16:27:34",
+          "exit_order_id": "fcf1d8a9-0917-4116-b0e2-7db51e485abc",
+          "pnl": 0.0,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 32,
+      "market_ticker": "KXETH15M-26APR111645-45",
+      "start_time": "2026-04-11 16:30:36",
+      "end_time": "2026-04-11 16:45:00",
+      "starting_balance": 65.85,
+      "ending_balance": 66.11,
+      "session_pnl": 0.26,
+      "session_pnl_percent": 0.39,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.98,
+          "entry_time": "2026-04-11 16:38:24",
+          "quantity": 26,
+          "entry_order_id": "305adc8f-0553-4b52-93c6-0030ef5c7fb6",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-11 16:39:16",
+          "exit_order_id": "c08f1673-856c-4a30-b645-dfa988b62df6",
+          "pnl": 0.26,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 34,
+      "market_ticker": "KXETH15M-26APR111700-00",
+      "start_time": "2026-04-11 16:45:35",
+      "end_time": "2026-04-11 17:00:11",
+      "starting_balance": 66.09,
+      "ending_balance": 61.66,
+      "session_pnl": -4.43,
+      "session_pnl_percent": -6.7,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.98,
+          "entry_time": "2026-04-11 16:54:07",
+          "quantity": 26,
+          "entry_order_id": "33fd5b0f-b8ea-4547-a4dc-70dfbccbcc43",
+          "exit_price": 0.8,
+          "exit_time": "2026-04-11 16:55:40",
+          "exit_order_id": "748c0bf4-cf21-4b96-8fc2-32dca4626a37",
+          "pnl": -4.68,
+          "status": "CLOSED"
+        },
+        {
+          "side": "yes",
+          "entry_price": 0.98,
+          "entry_time": "2026-04-11 16:58:28",
+          "quantity": 25,
+          "entry_order_id": "bf8c4fe2-c8a5-4922-a436-0f711843c508",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-11 16:58:35",
+          "exit_order_id": "70f612a9-c1e7-45e2-b9c4-37562e690898",
+          "pnl": 0.25,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 35,
+      "market_ticker": "KXETH15M-26APR111715-15",
+      "start_time": "2026-04-11 17:00:15",
+      "end_time": "2026-04-11 17:15:00",
+      "starting_balance": 61.62,
+      "ending_balance": 61.87,
+      "session_pnl": 0.25,
+      "session_pnl_percent": 0.41,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.98,
+          "entry_time": "2026-04-11 17:10:48",
+          "quantity": 25,
+          "entry_order_id": "1574c733-6419-47d1-bdfb-1fdc723054e0",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-11 17:12:51",
+          "exit_order_id": "4091ddba-a6e1-4487-86c9-83bb3b8e3550",
+          "pnl": 0.25,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 37,
+      "market_ticker": "KXETH15M-26APR111730-30",
+      "start_time": "2026-04-11 17:15:36",
+      "end_time": "2026-04-11 17:30:01",
+      "starting_balance": 61.87,
+      "ending_balance": 62.12,
+      "session_pnl": 0.25,
+      "session_pnl_percent": 0.4,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "no",
+          "entry_price": 0.98,
+          "entry_time": "2026-04-11 17:25:11",
+          "quantity": 25,
+          "entry_order_id": "f8c53d4c-0ac6-4e6d-bbf4-69d79bf0d36b",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-11 17:28:01",
+          "exit_order_id": "3ed94232-33a2-472f-a3e5-ddbd0a834ba2",
+          "pnl": 0.25,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 39,
+      "market_ticker": "KXETH15M-26APR111745-45",
+      "start_time": "2026-04-11 17:30:37",
+      "end_time": "2026-04-11 17:45:00",
+      "starting_balance": 62.12,
+      "ending_balance": 85.98,
+      "session_pnl": 23.86,
+      "session_pnl_percent": 38.41,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.98,
+          "entry_time": "2026-04-11 17:44:07",
+          "quantity": 1,
+          "entry_order_id": "501069b2-349c-49c7-bb1c-2f06fc6447a7",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-11 17:44:30",
+          "exit_order_id": "5aa3a2a4-5a80-49a3-abff-3729ead5b077",
+          "pnl": 0.01,
+          "status": "CLOSED"
+        }
+      ]
+    },
+    {
+      "session_number": 1,
+      "market_ticker": "KXETH15M-26APR111815-15",
+      "start_time": "2026-04-11 18:03:44",
+      "end_time": "2026-04-11 18:15:00",
+      "starting_balance": 60.78,
+      "ending_balance": 74.68,
+      "session_pnl": 13.9,
+      "session_pnl_percent": 22.86,
+      "outcome": "No position at close",
+      "trades": [
+        {
+          "side": "yes",
+          "entry_price": 0.946,
+          "entry_time": "2026-04-11 18:09:16",
+          "quantity": 24,
+          "entry_order_id": "c874a788-0c46-4808-8cd3-05dce166fe02",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-11 18:12:00",
+          "exit_order_id": "e547fed5-61ba-4665-a871-703a816ee0e3",
+          "pnl": 1.06,
+          "status": "CLOSED"
+        },
+        {
+          "side": "yes",
+          "entry_price": 0.946,
+          "entry_time": "2026-04-11 18:12:03",
+          "quantity": 24,
+          "entry_order_id": "c874a788-0c46-4808-8cd3-05dce166fe02",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-11 18:12:03",
+          "exit_order_id": "516c2c40-be7b-405d-809c-299f3002b8b2",
+          "pnl": 1.06,
+          "status": "CLOSED"
+        },
+        {
+          "side": "yes",
+          "entry_price": 0.946,
+          "entry_time": "2026-04-11 18:12:07",
+          "quantity": 24,
+          "entry_order_id": "c874a788-0c46-4808-8cd3-05dce166fe02",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-11 18:12:07",
+          "exit_order_id": "9c448bdd-c42e-4e8f-8930-b445efec63d2",
+          "pnl": 1.06,
+          "status": "CLOSED"
+        },
+        {
+          "side": "yes",
+          "entry_price": 0.946,
+          "entry_time": "2026-04-11 18:12:12",
+          "quantity": 19,
+          "entry_order_id": "c874a788-0c46-4808-8cd3-05dce166fe02",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-11 18:12:20",
+          "exit_order_id": "4b6d4e2f-e7eb-49ad-acbf-503b52bfd5ff",
+          "pnl": 0.84,
+          "status": "CLOSED"
+        },
+        {
+          "side": "yes",
+          "entry_price": 0.946,
+          "entry_time": "2026-04-11 18:12:23",
+          "quantity": 24,
+          "entry_order_id": "c874a788-0c46-4808-8cd3-05dce166fe02",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-11 18:12:23",
+          "exit_order_id": "6c262dca-a82d-4c15-93b0-f19b608870fa",
+          "pnl": 1.06,
+          "status": "CLOSED"
+        },
+        {
+          "side": "yes",
+          "entry_price": 0.946,
+          "entry_time": "2026-04-11 18:12:27",
+          "quantity": 24,
+          "entry_order_id": "c874a788-0c46-4808-8cd3-05dce166fe02",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-11 18:12:27",
+          "exit_order_id": "bbe844f1-8256-473e-8829-c7a9a237cbe6",
+          "pnl": 1.06,
+          "status": "CLOSED"
+        },
+        {
+          "side": "yes",
+          "entry_price": 0.946,
+          "entry_time": "2026-04-11 18:12:32",
+          "quantity": 24,
+          "entry_order_id": "c874a788-0c46-4808-8cd3-05dce166fe02",
+          "exit_price": 0.991,
+          "exit_time": "2026-04-11 18:12:32",
+          "exit_order_id": "bb572e67-3528-4904-8c86-e904fb2aaa8b",
+          "pnl": 1.08,
+          "status": "CLOSED"
+        },
+        {
+          "side": "yes",
+          "entry_price": 0.946,
+          "entry_time": "2026-04-11 18:12:36",
+          "quantity": 24,
+          "entry_order_id": "c874a788-0c46-4808-8cd3-05dce166fe02",
+          "exit_price": 0.991,
+          "exit_time": "2026-04-11 18:12:36",
+          "exit_order_id": "c85affe0-0763-4131-aa97-51f5c296a77b",
+          "pnl": 1.08,
+          "status": "CLOSED"
+        },
+        {
+          "side": "yes",
+          "entry_price": 0.946,
+          "entry_time": "2026-04-11 18:12:41",
+          "quantity": 24,
+          "entry_order_id": "c874a788-0c46-4808-8cd3-05dce166fe02",
+          "exit_price": 0.991,
+          "exit_time": "2026-04-11 18:12:41",
+          "exit_order_id": "34fae648-4780-4ca0-a2de-523ee310a936",
+          "pnl": 1.08,
+          "status": "CLOSED"
+        },
+        {
+          "side": "yes",
+          "entry_price": 0.946,
+          "entry_time": "2026-04-11 18:12:45",
+          "quantity": 24,
+          "entry_order_id": "c874a788-0c46-4808-8cd3-05dce166fe02",
+          "exit_price": 0.992,
+          "exit_time": "2026-04-11 18:12:45",
+          "exit_order_id": "1907f35f-5794-4bb2-a574-06c0a7a08ae9",
+          "pnl": 1.1,
+          "status": "CLOSED"
+        },
+        {
+          "side": "yes",
+          "entry_price": 0.946,
+          "entry_time": "2026-04-11 18:12:49",
+          "quantity": 24,
+          "entry_order_id": "c874a788-0c46-4808-8cd3-05dce166fe02",
+          "exit_price": 0.992,
+          "exit_time": "2026-04-11 18:12:49",
+          "exit_order_id": "fcb3a051-4d16-4ebc-a6f4-ec9cd94a717a",
+          "pnl": 1.1,
+          "status": "CLOSED"
+        },
+        {
+          "side": "yes",
+          "entry_price": 0.946,
+          "entry_time": "2026-04-11 18:12:54",
+          "quantity": 24,
+          "entry_order_id": "c874a788-0c46-4808-8cd3-05dce166fe02",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-11 18:12:54",
+          "exit_order_id": "cbff7242-8c49-4d64-950e-df9a22851f3f",
+          "pnl": 1.06,
+          "status": "CLOSED"
+        },
+        {
+          "side": "yes",
+          "entry_price": 0.946,
+          "entry_time": "2026-04-11 18:12:58",
+          "quantity": 24,
+          "entry_order_id": "c874a788-0c46-4808-8cd3-05dce166fe02",
+          "exit_price": 0.99,
+          "exit_time": "2026-04-11 18:12:58",
+          "exit_order_id": "bbc173e6-84a4-4d1a-bb23-29f734a14916",
+          "pnl": 1.06,
+          "status": "CLOSED"
+        }
+      ]
     }
   ]
 }
