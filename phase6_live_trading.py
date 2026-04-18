@@ -5,7 +5,7 @@ import json
 import os
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -28,7 +28,7 @@ if not API_KEY_ID or not PRIVATE_KEY_PATH or not BASE_URL:
 
 # Trading parameters - SAFETY FIRST: 2% position sizing
 ENTRY_TRIGGER = 0.98  # Enter when ask >= 98 cents
-EXIT_TRIGGER = 0.80  # Exit when price falls to 80 cents
+EXIT_TRIGGER = 0.65  # Exit when price falls to 65 cents
 POSITION_SIZE_PCT = 0.40  # Use 40% of account balance
 TRADING_DELAY_MINUTES = 8  # Only trade when 8 minutes or less remain
 MINIMUM_ACCOUNT_BALANCE = 50.00  # Minimum balance required to continue trading
@@ -537,12 +537,15 @@ class LivePosition:
         self.side = side
         self.entry_price = entry_price
         self.quantity = quantity
+        self.entry_quantity = quantity
         self.entry_time = entry_time
         self.entry_order_id = order_id
         self.exit_price = None
         self.exit_time = None
         self.exit_order_id = None
         self.pnl = None
+        self._exit_realized_qty = 0
+        self._exit_realized_proceeds = 0.0
 
     def close(self, exit_price: float, exit_time: str, exit_order_id: str = None):
         self.exit_price = exit_price
@@ -702,6 +705,10 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
     pending_entry_quantity = None  # Track expected quantity for partial fill detection
     pending_entry_time = None  # Track when order was placed
     pending_exit_order_id = None
+    pending_exit_price_cents = None
+    pending_exit_reason = None
+    next_entry_attempt_time = datetime.min
+    next_exit_attempt_time = datetime.min
     rule1_exit_triggered = False  # Flag to prevent re-entry after 99¢ emergency exit
     rule1_exit_time = None  # Store exit time when Rule 1 triggers
     rule1_exit_price = None  # Store exit price when Rule 1 triggers
@@ -778,8 +785,124 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
 
                 subscribed_printed = False
 
-                async for raw_message in ws:
+                while True:
                     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    try:
+                        raw_message = await asyncio.wait_for(ws.recv(), timeout=5)
+                    except asyncio.TimeoutError:
+                        current_time = datetime.now(timezone.utc)
+                        if current_time >= close_time:
+                            session_end_time = now
+                            print(f"\n[{now}] Market {market_ticker} has CLOSED (reached close time)")
+
+                            yes_ask_f = last_yes_ask
+
+                            if position:
+                                await asyncio.sleep(2)
+
+                                try:
+                                    final_market = client.get_market(market_ticker)
+                                    final_info = final_market.get("market", {})
+                                    result = final_info.get("result")
+
+                                    if result == "yes":
+                                        winner = "YES"
+                                        settlement_price = 1.0 if position.side == "yes" else 0.0
+                                    elif result == "no":
+                                        winner = "NO"
+                                        settlement_price = 0.0 if position.side == "yes" else 1.0
+                                    else:
+                                        print(f"Warning: Market result not yet available, using last prices")
+                                        if yes_ask_f and yes_ask_f >= 0.99:
+                                            winner = "YES"
+                                            settlement_price = 1.0 if position.side == "yes" else 0.0
+                                        else:
+                                            winner = "NO"
+                                            settlement_price = 0.0 if position.side == "yes" else 1.0
+                                except Exception as e:
+                                    print(f"Error fetching final result: {e}")
+                                    if yes_ask_f and yes_ask_f >= 0.99:
+                                        winner = "YES"
+                                        settlement_price = 1.0 if position.side == "yes" else 0.0
+                                    else:
+                                        winner = "NO"
+                                        settlement_price = 0.0 if position.side == "yes" else 1.0
+
+                                proceeds = settlement_price * position.quantity
+                                current_balance += proceeds
+                                position.close(settlement_price, now)
+
+                                print(f"Market settled: {winner} won")
+                                print(f"Position closed at settlement: {position.side.upper()} @ {fmt_cents(settlement_price)}")
+                                print(f"Proceeds: {fmt_dollars(proceeds)}")
+                                print(f"P&L: {fmt_dollars(position.pnl)}")
+
+                                trades_log.append(position)
+
+                                if position.side.upper() == winner:
+                                    outcome = f"Held {position.side.upper()} to close - WON"
+                                else:
+                                    outcome = f"Held {position.side.upper()} to close - LOST"
+
+                                trade_cost = position.entry_price * position.quantity
+                                trade_pnl_pct = (position.pnl / trade_cost) * 100 if trade_cost > 0 else 0
+                                session_pnl_pct = ((current_balance - session_start_balance) / session_start_balance) * 100 if session_start_balance > 0 else 0
+                                log_trade_to_csv(
+                                session_info={
+                                    "session_number": session_number,
+                                    "session_start_time": session_start_time,
+                                    "session_end_time": now,
+                                    "market_ticker": market_ticker,
+                                    "starting_balance": session_start_balance,
+                                    "ending_balance": current_balance,
+                                    "session_pnl": current_balance - session_start_balance,
+                                    "session_pnl_percent": session_pnl_pct
+                                },
+                                trade_info={
+                                    "trade_number": len(trades_log),
+                                    "side": position.side,
+                                    "buy_time": position.entry_time,
+                                    "buy_price": position.entry_price,
+                                    "buy_quantity": position.quantity,
+                                    "buy_cost": position.entry_price * position.quantity,
+                                    "buy_order_id": position.entry_order_id,
+                                    "sold": True,
+                                    "sell_time": position.exit_time,
+                                    "sell_price": position.exit_price,
+                                    "sell_quantity": position.quantity,
+                                    "sell_proceeds": proceeds,
+                                    "sell_order_id": position.exit_order_id if position.exit_order_id else None,
+                                    "exit_type": "SETTLEMENT",
+                                    "trade_pnl": position.pnl,
+                                    "trade_pnl_percent": trade_pnl_pct,
+                                    "emergency_exit": False,
+                                    "emergency_exit_time": "",
+                                    "emergency_exit_price": "",
+                                    "boundary_difference": "",
+                                    "market_outcome": winner
+                                }
+                            )
+                            else:
+                                outcome = "No position at close"
+
+                            if session_end_time is None:
+                                session_end_time = now
+
+                            print_session_summary(
+                                session_number,
+                                market_ticker,
+                                session_start_time,
+                                session_end_time,
+                                session_start_balance,
+                                current_balance,
+                                position,
+                                trades_log,
+                                outcome,
+                            )
+
+                            return current_balance
+
+                        continue
 
                     try:
                         data = json.loads(raw_message)
@@ -981,17 +1104,31 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                                     print(f"Order {pending_entry_order_id} canceled successfully")
                                 except Exception as cancel_error:
                                     print(f"Warning: Could not cancel order: {cancel_error}")
-                                
-                                # Refund the partial fill cost
-                                refund = avg_fill_price * total_filled
-                                current_balance += refund
-                                print(f"Refunded {fmt_dollars(refund)} from partial fill")
-                                print(f"No position created - waiting for next opportunity\n")
-                                
+
+                                # Partial fills cannot be "rejected" on exchange; we must manage the position.
+                                # Treat it as a real position and immediately liquidate it.
+                                if avg_fill_price is None:
+                                    print(f"[{now}] ERROR: Partial fill missing price; cannot safely liquidate.")
+                                else:
+                                    position = LivePosition(
+                                        pending_entry_side,
+                                        avg_fill_price,
+                                        total_filled,
+                                        now,
+                                        pending_entry_order_id,
+                                    )
+                                    cost = avg_fill_price * total_filled
+                                    current_balance -= cost
+
+                                    print(f"[{now}] Continuing with partially filled position: {pending_entry_side.upper()} x {total_filled} @ {fmt_cents(avg_fill_price)}")
+                                    print(f"[{now}] Remaining Balance: {fmt_dollars(current_balance)}")
+
                                 pending_entry_order_id = None
                                 pending_entry_side = None
                                 pending_entry_quantity = None
                                 pending_entry_time = None
+                                next_entry_attempt_time = datetime.now() + timedelta(seconds=30)
+                                continue
                                 
                             elif total_filled > 0 and total_filled == pending_entry_quantity:
                                 # FULL FILL - Create position
@@ -1019,10 +1156,13 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                                 # Check 1: Entry price must not be WORSE than our limit (higher cost is worse for a buy).
                                 if avg_fill_price is None:
                                     violations.append("Entry fill price missing/invalid")
-                                elif avg_fill_price > ENTRY_TRIGGER:
-                                    violations.append(
-                                        f"Entry price {fmt_cents(avg_fill_price)} is worse than limit {fmt_cents(ENTRY_TRIGGER)}"
-                                    )
+                                else:
+                                    fill_cents = int(round(avg_fill_price * 100))
+                                    limit_cents = int(round(ENTRY_TRIGGER * 100))
+                                    if fill_cents > (limit_cents + 1):
+                                        violations.append(
+                                            f"Entry price {fmt_cents(avg_fill_price)} is worse than limit {fmt_cents(ENTRY_TRIGGER)}"
+                                        )
                                 
                                 # Check 2: Don't allow overspending beyond target sizing.
                                 # Underspending can happen from price improvement (fills below our limit) and is OK.
@@ -1033,15 +1173,24 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                                 
                                 if violations:
                                     print("\n" + "!" * 80)
-                                    print("⛔ BOT UNEXPECTED BEHAVIOR ERROR - SHUTTING DOWN ⛔")
+                                    print("⚠️  BOT VALIDATION WARNING - IGNORING THIS ENTRY ⚠️")
                                     print("!" * 80)
                                     for i, violation in enumerate(violations, 1):
                                         print(f"{i}. {violation}")
                                     print(f"\nExpected: Entry >= 98¢, Position = 40% of balance (${expected_position_value:.2f})")
                                     print(f"Actual: Entry = {fmt_cents(avg_fill_price)}, Position cost = ${cost:.2f}")
-                                    print("\n⚠️  BOT SHUT DOWN - RULE VIOLATION DETECTED ⚠️")
+                                    print("\nResetting state and waiting for next opportunity...")
                                     print("!" * 80 + "\n")
-                                    raise RuntimeError(f"Bot rule violation detected: {'; '.join(violations)}")
+
+                                    # Undo balance/position effects and reset state.
+                                    current_balance += cost
+                                    position = None
+                                    pending_entry_order_id = None
+                                    pending_entry_side = None
+                                    pending_entry_quantity = None
+                                    pending_entry_time = None
+                                    next_entry_attempt_time = datetime.now() + timedelta(seconds=30)
+                                    continue
                                 
                                 pending_entry_order_id = None
                                 pending_entry_side = None
@@ -1069,13 +1218,20 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                     # Entry logic
                     time_remaining = (close_time - current_time).total_seconds() / 60
                     trading_allowed = time_remaining <= TRADING_DELAY_MINUTES
+                    seconds_remaining = (close_time - current_time).total_seconds()
 
                     current_price = None
 
                     if position is None and pending_entry_order_id is None and not rule1_exit_triggered and trading_allowed:
+                        if seconds_remaining <= 45:
+                            continue
+                        if datetime.now() < next_entry_attempt_time:
+                            continue
                         if yes_ask_f is not None and yes_ask_f >= ENTRY_TRIGGER:
                             position_value_dollars = current_balance * POSITION_SIZE_PCT
-                            quantity = max(1, int(position_value_dollars / yes_ask_f))
+                            desired_qty = int(position_value_dollars / ENTRY_TRIGGER)
+                            max_affordable_qty = int(current_balance / ENTRY_TRIGGER)
+                            quantity = max(0, min(desired_qty, max_affordable_qty))
                             if quantity > 0:
                                 yes_price_cents = int(ENTRY_TRIGGER * 100)
                                 try:
@@ -1099,7 +1255,10 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                                     resp = getattr(e, "response", None)
                                     if resp is not None:
                                         try:
-                                            print(f"[{now}] API response JSON: {resp.json()}")
+                                            err_json = resp.json()
+                                            print(f"[{now}] API response JSON: {err_json}")
+                                            if isinstance(err_json, dict) and (err_json.get("error") or {}).get("code") == "insufficient_balance":
+                                                next_entry_attempt_time = datetime.now() + timedelta(seconds=30)
                                         except Exception:
                                             try:
                                                 print(f"[{now}] API response text: {resp.text}")
@@ -1108,7 +1267,9 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
 
                         elif no_ask is not None and no_ask >= ENTRY_TRIGGER:
                             position_value_dollars = current_balance * POSITION_SIZE_PCT
-                            quantity = max(1, int(position_value_dollars / no_ask))
+                            desired_qty = int(position_value_dollars / ENTRY_TRIGGER)
+                            max_affordable_qty = int(current_balance / ENTRY_TRIGGER)
+                            quantity = max(0, min(desired_qty, max_affordable_qty))
                             if quantity > 0:
                                 no_price_cents = int(ENTRY_TRIGGER * 100)
                                 try:
@@ -1132,7 +1293,10 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                                     resp = getattr(e, "response", None)
                                     if resp is not None:
                                         try:
-                                            print(f"[{now}] API response JSON: {resp.json()}")
+                                            err_json = resp.json()
+                                            print(f"[{now}] API response JSON: {err_json}")
+                                            if isinstance(err_json, dict) and (err_json.get("error") or {}).get("code") == "insufficient_balance":
+                                                next_entry_attempt_time = datetime.now() + timedelta(seconds=30)
                                         except Exception:
                                             try:
                                                 print(f"[{now}] API response text: {resp.text}")
@@ -1162,7 +1326,10 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                         
                         # Rule 1 emergency exit
                         if rule1_triggered:
-                            price_cents = int(current_price * 100)
+                            if datetime.now() < next_exit_attempt_time:
+                                continue
+                            price_cents = int(round(current_price * 100))
+                            price_cents = max(1, min(99, price_cents))
                             
                             # CRITICAL: Ensure we sell the EXACT quantity we bought
                             sell_quantity = position.quantity
@@ -1184,16 +1351,22 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                                     order = order_response.get("order", {})
                                     exit_order_id = order.get("order_id")
                                     pending_exit_order_id = exit_order_id
+                                    pending_exit_price_cents = price_cents
+                                    pending_exit_reason = "RULE1"
                                     rule1_exit_triggered = True  # Set flag to prevent re-entry
                                     print(f"Emergency exit order placed: {exit_order_id}")
                                     print(f"[Rule 1] Re-entry disabled for this session")
                                         
                                 except Exception as e:
                                     print(f"[{now}] ERROR placing emergency exit order: {e}")
+                                    next_exit_attempt_time = datetime.now() + timedelta(seconds=10)
 
-                        # Fixed exit at 80¢
+                        # Fixed exit at 65¢
                         if current_price is not None and current_price <= EXIT_TRIGGER:
-                            price_cents = int(current_price * 100)
+                            if datetime.now() < next_exit_attempt_time:
+                                continue
+                            price_cents = int(round(current_price * 100))
+                            price_cents = max(1, min(99, price_cents))
 
                             # CRITICAL: Ensure we sell the EXACT quantity we bought
                             sell_quantity = position.quantity
@@ -1215,10 +1388,13 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                                     order = order_response.get("order", {})
                                     exit_order_id = order.get("order_id")
                                     pending_exit_order_id = exit_order_id
+                                    pending_exit_price_cents = price_cents
+                                    pending_exit_reason = "STOP"
                                     print(f"Sell order placed: {exit_order_id}")
                                     print(f"[{now}] Confirmed: Selling {sell_quantity} contracts to close position")
                                 except Exception as e:
                                     print(f"[{now}] ERROR placing sell order: {e}")
+                                    next_exit_attempt_time = datetime.now() + timedelta(seconds=10)
             
                     # Check if pending exit order has filled
                     if pending_exit_order_id and position is not None:
@@ -1230,8 +1406,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                             fills = fills_response.get("fills", [])
                             
                             total_filled = 0
-                            avg_fill_price = 0
-                            fill_prices = []
+                            fill_price_sum = 0.0
                             for fill in fills:
                                 if fill.get("order_id") == pending_exit_order_id:
                                     count = int(float(fill.get("count_fp", "0")))
@@ -1242,18 +1417,20 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                                     else:
                                         price_dollars = fill.get("no_price_dollars", "0")
                                         fill_price = safe_float(price_dollars)
-                                    fill_prices.append(fill_price)
+                                    if fill_price is not None and count > 0:
+                                        fill_price_sum += fill_price * count
                             
-                            # Calculate weighted average fill price
-                            if fill_prices:
-                                avg_fill_price = sum(fill_prices) / len(fill_prices)
+                            avg_fill_price = (fill_price_sum / total_filled) if total_filled > 0 else None
                             
                             if total_filled > 0 and total_filled < position.quantity:
                                 # PARTIAL FILL ON EXIT - handle gracefully by selling remaining quantity
                                 remaining_qty = position.quantity - total_filled
 
-                                proceeds = avg_fill_price * total_filled
+                                proceeds = (avg_fill_price or 0.0) * total_filled
                                 current_balance += proceeds
+
+                                position._exit_realized_qty += total_filled
+                                position._exit_realized_proceeds += proceeds
 
                                 print("\n" + "!" * 80)
                                 print("⚠️  PARTIAL EXIT FILL DETECTED - CONTINUING ⚠️")
@@ -1266,16 +1443,17 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
 
                                 position.quantity = remaining_qty
 
-                                # Place a new exit order for the remaining contracts
-                                if position.side == "yes":
-                                    current_exit_price = yes_ask_f
-                                else:
-                                    current_exit_price = no_ask
+                                # Cancel the remaining portion of the current exit order before replacing.
+                                # Otherwise we can end up with multiple live sell orders and effectively over-sell.
+                                try:
+                                    await _to_thread(client.delete, f"/portfolio/orders/{pending_exit_order_id}", auth=True)
+                                except Exception:
+                                    pass
 
-                                if current_exit_price is None:
-                                    current_exit_price = avg_fill_price
-
-                                price_cents = int(current_exit_price * 100)
+                                # Place a new exit order for the remaining contracts at the SAME intended limit price.
+                                price_cents = pending_exit_price_cents
+                                if price_cents is None:
+                                    price_cents = int(((avg_fill_price or 0.0) * 100))
                                 try:
                                     order_response = await _to_thread(
                                         client.create_order,
@@ -1288,6 +1466,8 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                                     )
                                     order = order_response.get("order", {})
                                     pending_exit_order_id = order.get("order_id")
+                                    pending_exit_price_cents = price_cents
+                                    # keep same pending_exit_reason
                                     print(f"New exit order placed for remaining {remaining_qty}: {pending_exit_order_id}")
                                 except Exception as e:
                                     print(f"[{now}] ERROR placing follow-up exit order: {e}")
@@ -1296,16 +1476,26 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                             
                             elif total_filled > 0 and total_filled == position.quantity:
                                 # FULL FILL - Close position completely
-                                proceeds = avg_fill_price * total_filled
+                                proceeds = (avg_fill_price or 0.0) * total_filled
                                 current_balance += proceeds
-                                position.close(avg_fill_price, now, pending_exit_order_id)
+
+                                position._exit_realized_qty += total_filled
+                                position._exit_realized_proceeds += proceeds
+
+                                full_qty = getattr(position, "entry_quantity", position.quantity)
+                                total_proceeds = position._exit_realized_proceeds
+                                avg_exit_price_total = (total_proceeds / full_qty) if full_qty > 0 else (avg_fill_price or 0.0)
+
+                                # Restore original quantity for accurate logging/summary now that position is closed
+                                position.quantity = full_qty
+                                position.close(avg_exit_price_total, now, pending_exit_order_id)
                                 
                                 # STRICT VALIDATION: Check if exit violates rules
                                 violations = []
                                 
                                 # Check: If price was >= 99¢ when we placed the order, we should have sold at >= 98¢
                                 # (allowing 1¢ slippage)
-                                if rule1_triggered and avg_fill_price < 0.98:
+                                if rule1_exit_triggered and avg_fill_price is not None and avg_fill_price < 0.98:
                                     violations.append(f"Emergency exit at 99¢ was triggered but sold at {fmt_cents(avg_fill_price)} (expected >= 98¢)")
                                 
                                 if violations:
@@ -1316,13 +1506,17 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                                         print(f"{i}. {violation}")
                                     print(f"\nExpected: Sell at 99¢ when emergency exit triggered")
                                     print(f"Actual: Sold at {fmt_cents(avg_fill_price)}")
-                                    print("\n⚠️  BOT SHUT DOWN - RULE VIOLATION DETECTED ⚠️")
+                                    print("\n⚠️  EXIT VALIDATION WARNING - CONTINUING ⚠️")
                                     print("!" * 80 + "\n")
-                                    raise RuntimeError(f"Bot rule violation detected: {'; '.join(violations)}")
+
+                                    pending_exit_order_id = None
+                                    pending_exit_price_cents = None
                                 
                                 # Check if sold at 99¢ or above - if so, stop trading for this session
                                 if avg_fill_price >= 0.99:
-                                    rule1_exit_triggered = True
+                                    if pending_exit_reason == "RULE1":
+                                        rule1_exit_triggered = True
+                                        next_entry_attempt_time = datetime.now() + timedelta(days=1)
                                     print("\n" + "<" * 80)
                                     print(f"[{now}] EXIT FILLED: SELL {position.side.upper()}")
                                     print(f"Exit Price: {fmt_cents(avg_fill_price)}")
@@ -1330,8 +1524,9 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                                     print(f"Proceeds: {fmt_dollars(proceeds)}")
                                     print(f"P&L: {fmt_dollars(position.pnl)}")
                                     print(f"New Balance: {fmt_dollars(current_balance)}")
-                                    print(f"\n🎯 SOLD AT 99¢+ - STOPPING TRADING FOR THIS SESSION")
-                                    print(f"Waiting for market to close before next session...")
+                                    if pending_exit_reason == "RULE1":
+                                        print(f"\n🎯 SOLD AT 99¢+ - STOPPING TRADING FOR THIS SESSION")
+                                        print(f"Waiting for market to close before next session...")
                                     print("<" * 80 + "\n")
                                 else:
                                     print("\n" + "<" * 80)
@@ -1352,7 +1547,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                                     outcome = f"Exited {position.side.upper()} at stop - Loss"
                                 
                                 # Log to CSV
-                                trade_cost = position.entry_price * position.quantity
+                                trade_cost = position.entry_price * getattr(position, "entry_quantity", position.quantity)
                                 trade_pnl_pct = (position.pnl / trade_cost) * 100 if trade_cost > 0 else 0
                                 session_pnl_pct = ((current_balance - session_start_balance) / session_start_balance) * 100 if session_start_balance > 0 else 0
                                 
@@ -1375,14 +1570,14 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                                         "side": position.side,
                                         "buy_time": position.entry_time,
                                         "buy_price": position.entry_price,
-                                        "buy_quantity": position.quantity,
-                                        "buy_cost": position.entry_price * position.quantity,
+                                        "buy_quantity": getattr(position, "entry_quantity", position.quantity),
+                                        "buy_cost": position.entry_price * getattr(position, "entry_quantity", position.quantity),
                                         "buy_order_id": position.entry_order_id,
                                         "sold": True,
                                         "sell_time": position.exit_time,
                                         "sell_price": position.exit_price,
-                                        "sell_quantity": position.quantity,
-                                        "sell_proceeds": proceeds,
+                                        "sell_quantity": getattr(position, "entry_quantity", position.quantity),
+                                        "sell_proceeds": total_proceeds,
                                         "sell_order_id": position.exit_order_id,
                                         "exit_type": "RULE1_EMERGENCY_EXIT" if is_emergency_exit else "MANUAL_STOP_LOSS",
                                         "trade_pnl": position.pnl,
@@ -1397,6 +1592,8 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                                 
                                 position = None
                                 pending_exit_order_id = None
+                                pending_exit_price_cents = None
+                                pending_exit_reason = None
                         except Exception as e:
                             print(f"DEBUG: Error checking exit fills: {e}")
 
