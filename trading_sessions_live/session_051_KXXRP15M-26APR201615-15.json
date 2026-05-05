@@ -1,0 +1,25 @@
+{
+  "session_number": 51,
+  "market_ticker": "KXXRP15M-26APR201615-15",
+  "start_time": "2026-04-20 16:00:07",
+  "end_time": "2026-04-20 16:14:59",
+  "starting_balance": 107.14,
+  "ending_balance": 107.57,
+  "session_pnl": 0.43,
+  "session_pnl_percent": 0.4,
+  "outcome": "No position at close",
+  "trades": [
+    {
+      "side": "no",
+      "entry_price": 0.98,
+      "entry_time": "2026-04-20 16:10:23",
+      "quantity": 43,
+      "entry_order_id": "5553a18d-2ff7-4df9-8516-514e843ce54d",
+      "exit_price": 0.99,
+      "exit_time": "2026-04-20 16:11:24",
+      "exit_order_id": "e4dfd0cc-6b79-4eda-b412-dcf137c2bf1c",
+      "pnl": 0.43,
+      "status": "CLOSED"
+    }
+  ]
+}

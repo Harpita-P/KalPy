@@ -1,0 +1,12 @@
+{
+  "session_number": 7,
+  "market_ticker": "KXXRP15M-26APR231815-15",
+  "start_time": "2026-04-23 18:00:08",
+  "end_time": "2026-04-23 18:14:56",
+  "starting_balance": 63.06,
+  "ending_balance": 63.06,
+  "session_pnl": 0.0,
+  "session_pnl_percent": 0.0,
+  "outcome": "No position at close",
+  "trades": []
+}

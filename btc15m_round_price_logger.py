@@ -24,7 +24,7 @@ load_dotenv()
 
 
 PRICE_LOG_PATH = Path("csv_trading_logs") / "btc15m_price_log.csv"
-QUALIFIED_ROUNDS_PATH = Path("csv_trading_logs") / "btc15m_98_then_88_rounds.csv"
+QUALIFIED_ROUNDS_PATH = Path("csv_trading_logs") / "btc15m_98_then_60_rounds.csv"
 
 
 PRICE_LOG_HEADERS = [
@@ -51,7 +51,7 @@ QUALIFIED_HEADERS = [
 
 
 ENTRY_LEVEL = 0.98
-DROP_LEVEL = 0.88
+DROP_LEVEL = 0.60
 
 
 def ensure_csv(path: Path, headers: list[str]) -> None:

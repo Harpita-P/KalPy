@@ -1,0 +1,25 @@
+{
+  "session_number": 20,
+  "market_ticker": "KXXRP15M-26APR222030-30",
+  "start_time": "2026-04-22 20:15:04",
+  "end_time": "2026-04-22 20:29:57",
+  "starting_balance": 90.94,
+  "ending_balance": 91.3,
+  "session_pnl": 0.36,
+  "session_pnl_percent": 0.4,
+  "outcome": "No position at close",
+  "trades": [
+    {
+      "side": "yes",
+      "entry_price": 0.98,
+      "entry_time": "2026-04-22 20:25:42",
+      "quantity": 36,
+      "entry_order_id": "e1c27222-0d5c-4b46-91c2-32136e55d56d",
+      "exit_price": 0.99,
+      "exit_time": "2026-04-22 20:28:01",
+      "exit_order_id": "bab0128d-302e-48d5-95dd-28ecaed94c66",
+      "pnl": 0.36,
+      "status": "CLOSED"
+    }
+  ]
+}
