@@ -50,8 +50,8 @@ QUALIFIED_HEADERS = [
 ]
 
 
-ENTRY_LEVEL = 0.98
-DROP_LEVEL = 0.60
+ENTRY_LEVEL = 0.99
+DROP_LEVEL = 0.50
 
 
 def ensure_csv(path: Path, headers: list[str]) -> None:

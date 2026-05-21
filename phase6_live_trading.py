@@ -28,10 +28,15 @@ if not API_KEY_ID or not PRIVATE_KEY_PATH or not BASE_URL:
     raise ValueError("Missing environment variables. Check your .env file.")
 
 # Trading parameters - SAFETY FIRST: 2% position sizing
-ENTRY_TRIGGER = 0.98  # Enter when ask >= 98 cents
-EXIT_TRIGGER = 0.60  # Exit when price falls to 60 cents
+ENTRY_TRIGGER = 0.99  # Enter when ask >= 99 cents
+EXIT_TRIGGER = 0.40  # Stop: sell when held-side ask <= 40 cents
 POSITION_SIZE_PCT = 0.40  # Use 40% of account balance
 TRADING_DELAY_MINUTES = 8  # Only trade when 8 minutes or less remain
+NO_ENTRY_FINAL_SECONDS = 100  # Don't place new entry orders in final 1:40
+# Final 2 minutes: compare spot BTC to market strike; within $5 blocks new entries (flat) or triggers exit (position)
+FINAL_PHASE_BTC_RULE_SECONDS = 120
+BTC_TARGET_PROXIMITY_DOLLARS = 5.0
+BTC_SPOT_POLL_INTERVAL_SECONDS = 5
 MINIMUM_ACCOUNT_BALANCE = 2.00  # Minimum balance required to continue trading
 PRINT_TICK_UPDATES = False
 ENTRY_ORDER_TIMEOUT_SECONDS = 60
@@ -40,14 +45,8 @@ EXIT_LADDER_INTERVAL_SECONDS = 3
 EXIT_LADDER_STEP_CENTS = 1
 EXIT_LADDER_RULE1_FLOOR_CENTS = 95
 EXIT_LADDER_TIME_EXIT_FLOOR_CENTS = 95
-EXIT_LADDER_STOP_FLOOR_CENTS = 60
+EXIT_LADDER_STOP_FLOOR_CENTS = 40
 # NO COOLDOWNS - Can trade continuously
-
-# LOSS PREVENTION RULES
-# Rule 1: Emergency exit when position reaches 99%+ value
-# Immediately sell at 99% to lock in profit instead of waiting for settlement
-RULE1_EMERGENCY_EXIT_THRESHOLD = 0.99  # Trigger immediate sell when position value >= 99%
-
 
 def base_url_to_ws_url(base_url: str) -> str:
     parsed = urlparse(base_url)
@@ -67,6 +66,17 @@ CSV_HEADERS = [
     "exit_type", "trade_pnl", "trade_pnl_percent", "hold_duration_seconds", "outcome",
     "emergency_exit", "emergency_exit_time", "emergency_exit_price", "boundary_difference",
     "market_outcome"
+]
+
+DAILY_NET_LOG_PATH = Path("csv_trading_logs/daily_net_changes.csv")
+DAILY_NET_START_DATE = "2026-05-20"
+DAILY_NET_HEADERS = [
+    "date",
+    "starting_balance",
+    "ending_balance",
+    "net_change",
+    "number_rounds_traded",
+    "logged_at",
 ]
 
 
@@ -143,6 +153,108 @@ def log_trade_to_csv(session_info: dict, trade_info: dict):
     except Exception as e:
         print(f"WARNING: Failed to log trade to CSV: {e}")
         # Don't crash the bot if CSV logging fails
+
+
+def ensure_daily_net_csv_exists():
+    """Create the daily net-change CSV with headers if it doesn't exist."""
+    DAILY_NET_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    if not DAILY_NET_LOG_PATH.exists():
+        with open(DAILY_NET_LOG_PATH, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(DAILY_NET_HEADERS)
+
+
+def _logged_daily_net_dates() -> set[str]:
+    ensure_daily_net_csv_exists()
+    logged_dates = set()
+    try:
+        with open(DAILY_NET_LOG_PATH, "r", newline="") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if row.get("date"):
+                    logged_dates.add(row["date"])
+    except Exception as e:
+        print(f"WARNING: Could not read daily net-change CSV: {e}")
+    return logged_dates
+
+
+def _parse_session_date(session: dict) -> str | None:
+    start_time = session.get("start_time")
+    if not start_time:
+        return None
+    try:
+        return datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S").strftime("%Y-%m-%d")
+    except ValueError:
+        return start_time.split()[0] if " " in start_time else None
+
+
+def _load_all_sessions() -> list[dict]:
+    master_log = Path("trading_sessions_live") / "all_sessions.json"
+    if not master_log.exists():
+        return []
+    try:
+        with open(master_log, "r") as f:
+            payload = json.load(f)
+        sessions = payload.get("sessions", [])
+        return sessions if isinstance(sessions, list) else []
+    except Exception as e:
+        print(f"WARNING: Could not load sessions for daily net-change log: {e}")
+        return []
+
+
+def log_completed_daily_net_changes():
+    """Log completed midnight-to-midnight daily balance changes.
+
+    This intentionally logs only dates before today's local date, so May 20 is
+    written after the bot crosses into May 21 and has completed the full 24-hour
+    window.
+    """
+    try:
+        ensure_daily_net_csv_exists()
+        today = datetime.now().strftime("%Y-%m-%d")
+        logged_dates = _logged_daily_net_dates()
+        sessions_by_date: dict[str, list[dict]] = {}
+
+        for session in _load_all_sessions():
+            session_date = _parse_session_date(session)
+            if not session_date:
+                continue
+            if session_date < DAILY_NET_START_DATE or session_date >= today:
+                continue
+            sessions_by_date.setdefault(session_date, []).append(session)
+
+        rows_to_write = []
+        for session_date, sessions in sorted(sessions_by_date.items()):
+            if session_date in logged_dates:
+                continue
+            sessions.sort(key=lambda s: s.get("start_time", ""))
+            starting_balance = float(sessions[0].get("starting_balance", 0.0))
+            ending_balance = float(sessions[-1].get("ending_balance", starting_balance))
+            net_change = ending_balance - starting_balance
+            rows_to_write.append([
+                session_date,
+                round(starting_balance, 2),
+                round(ending_balance, 2),
+                round(net_change, 2),
+                len(sessions),
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            ])
+
+        if not rows_to_write:
+            return
+
+        with open(DAILY_NET_LOG_PATH, "a", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerows(rows_to_write)
+
+        for row in rows_to_write:
+            print(
+                f"Daily net-change logged for {row[0]}: "
+                f"{fmt_dollars(row[1])} -> {fmt_dollars(row[2])} "
+                f"({fmt_dollars(row[3])}), rounds={row[4]}"
+            )
+    except Exception as e:
+        print(f"WARNING: Failed to log daily net-change summary: {e}")
 
 
 class KalshiClient:
@@ -514,6 +626,34 @@ def safe_float(val):
         return None
 
 
+def btc_strike_target_usd(market_info: dict) -> float | None:
+    """Single reference USD level from Kalshi market strikes (for proximity vs spot BTC)."""
+    floor_f = safe_float(market_info.get("floor_strike"))
+    cap_f = safe_float(market_info.get("cap_strike"))
+    if floor_f is not None and cap_f is not None:
+        return (floor_f + cap_f) / 2.0
+    if floor_f is not None:
+        return floor_f
+    if cap_f is not None:
+        return cap_f
+    return None
+
+
+def fetch_btc_spot_usd_sync() -> float | None:
+    """Spot BTC/USD (public Coinbase quote; used only in final minutes of the round)."""
+    try:
+        response = requests.get(
+            "https://api.coinbase.com/v2/prices/BTC-USD/spot",
+            timeout=10,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        amount = payload.get("data", {}).get("amount")
+        return safe_float(amount)
+    except Exception:
+        return None
+
+
 
 
 def fmt_dollars(amount: float) -> str:
@@ -736,6 +876,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
         return initial_balance
     
     close_time = dateutil_parser.parse(close_time_str)
+    btc_target_usd = btc_strike_target_usd(market_info)
 
     print("\n" + "=" * 80)
     print("PHASE 6: LIVE TRADING SYSTEM")
@@ -759,9 +900,17 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
     
     print(f"Position Size: {POSITION_SIZE_PCT * 100:.1f}% of balance (SAFETY MODE)")
     print(f"Entry Rule: First side whose ASK reaches >= {fmt_cents(ENTRY_TRIGGER)}")
-    print(f"Exit Rule: Sell when price falls to {fmt_cents(EXIT_TRIGGER)}")
-    print(f"Emergency Exit: Immediate sell at 99¢+ to lock in profit")
+    print(f"Exit Rule: Near strike in final {FINAL_PHASE_BTC_RULE_SECONDS // 60}m (spot vs strike) -> sell; "
+          f"else stop at {fmt_cents(EXIT_TRIGGER)}; else hold to settlement")
     print(f"Trading Delay: Only trade when <= {TRADING_DELAY_MINUTES} minutes remain")
+    print(f"No new entries: final {NO_ENTRY_FINAL_SECONDS // 60}:{NO_ENTRY_FINAL_SECONDS % 60:02d} before close")
+    if btc_target_usd is not None:
+        print(
+            f"Final {FINAL_PHASE_BTC_RULE_SECONDS // 60}m BTC rule: spot within ${BTC_TARGET_PROXIMITY_DOLLARS:.0f} "
+            f"of strike ${btc_target_usd:,.2f} -> no new entries if flat; sell if holding"
+        )
+    else:
+        print("Final-2m BTC proximity rule: disabled (no floor/cap strike on market)")
     print(f"NO COOLDOWNS - Can trade continuously")
     print("Press Ctrl+C to stop")
     print("=" * 80 + "\n")
@@ -785,11 +934,13 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
     pending_exit_floor_price_cents = None
     next_entry_attempt_time = datetime.min
     next_exit_attempt_time = datetime.min
-    rule1_exit_triggered = False  # Flag to prevent re-entry after 99¢ emergency exit
-    rule1_exit_time = None  # Store exit time when Rule 1 triggers
-    rule1_exit_price = None  # Store exit price when Rule 1 triggers
-    rule1_boundary_diff = None  # Store boundary difference when Rule 1 triggers (legacy field)
-    stop_loss_exit_triggered = False  # Flag to prevent re-entry after 65¢ stop loss exit
+    rule1_exit_triggered = False
+    rule1_exit_time = None
+    rule1_exit_price = None
+    rule1_boundary_diff = None
+    stop_loss_exit_triggered = False  # No new entries after stop / near-target exit this session
+    last_btc_spot_usd = None
+    last_btc_spot_fetch_mono = 0.0
 
     # WebSocket reconnection loop
     max_retries = 5
@@ -1006,6 +1157,29 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                         print(f"[{now}] TICKER: YES ask={yes_ask_str}, NO ask={no_ask_str}")
 
                     current_time = datetime.now(timezone.utc)
+                    seconds_remaining = (close_time - current_time).total_seconds()
+                    in_final_two_min = 0 < seconds_remaining <= FINAL_PHASE_BTC_RULE_SECONDS
+
+                    if in_final_two_min and btc_target_usd is not None:
+                        mono = time.monotonic()
+                        if mono - last_btc_spot_fetch_mono >= BTC_SPOT_POLL_INTERVAL_SECONDS:
+                            last_btc_spot_fetch_mono = mono
+                            fetched = await asyncio.to_thread(fetch_btc_spot_usd_sync)
+                            if fetched is not None:
+                                last_btc_spot_usd = fetched
+
+                    near_target_band = (
+                        in_final_two_min
+                        and btc_target_usd is not None
+                        and last_btc_spot_usd is not None
+                        and abs(last_btc_spot_usd - btc_target_usd) <= BTC_TARGET_PROXIMITY_DOLLARS
+                    )
+                    block_entry_near_target = (
+                        near_target_band
+                        and position is None
+                        and pending_entry_order_id is None
+                    )
+
                     market_closed = current_time >= close_time
 
                     if market_closed:
@@ -1288,12 +1462,17 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                     # Entry logic
                     time_remaining = (close_time - current_time).total_seconds() / 60
                     trading_allowed = time_remaining <= TRADING_DELAY_MINUTES
-                    seconds_remaining = (close_time - current_time).total_seconds()
 
                     current_price = None
 
-                    if position is None and pending_entry_order_id is None and not rule1_exit_triggered and not stop_loss_exit_triggered and trading_allowed:
-                        if seconds_remaining <= 90:
+                    if (
+                        position is None
+                        and pending_entry_order_id is None
+                        and trading_allowed
+                        and not stop_loss_exit_triggered
+                        and not block_entry_near_target
+                    ):
+                        if seconds_remaining <= NO_ENTRY_FINAL_SECONDS:
                             continue
                         if datetime.now() < next_entry_attempt_time:
                             continue
@@ -1379,43 +1558,33 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                                             except Exception:
                                                 pass
 
-                    # RULE 1: Emergency exit when at 99%+ but BTC price too close to target boundary
-                    # This prevents rare settlement loss scenarios where outcome flips last minute
+                    # Position management: final-2m BTC near strike -> exit; else stop at EXIT_TRIGGER; else hold.
                     elif position is not None and pending_exit_order_id is None:
-                        # Determine current position value
                         if position.side == "yes":
                             current_price = yes_ask_f
                         else:
                             current_price = no_ask
-                        
-                        # Check if Rule 1 should trigger - immediately sell at 99%+
-                        rule1_triggered = False
-                        if current_price is not None and current_price >= RULE1_EMERGENCY_EXIT_THRESHOLD:
-                            rule1_triggered = True
-                            # Store emergency exit details for CSV logging
-                            rule1_exit_time = now
-                            rule1_exit_price = current_price
-                            rule1_boundary_diff = None  # No longer checking boundary
-                            print(f"\n[{now}] ⚠️  RULE 1 TRIGGERED - EMERGENCY EXIT AT 99%+ ⚠️")
-                            print(f"Position reached {fmt_cents(current_price)} (99%+)")
-                            print(f"Action: Selling immediately to lock in profit instead of waiting for settlement")
-                        
-                        # Rule 1 emergency exit
-                        if rule1_triggered:
-                            if datetime.now() < next_exit_attempt_time:
-                                continue
+
+                        if (
+                            near_target_band
+                            and current_price is not None
+                            and datetime.now() >= next_exit_attempt_time
+                        ):
                             price_cents = int(round(current_price * 100))
                             price_cents = max(1, min(99, price_cents))
-                            
-                            # CRITICAL: Ensure we sell the EXACT quantity we bought
                             sell_quantity = position.quantity
                             if sell_quantity <= 0:
-                                print(f"[{now}] ERROR: Invalid sell quantity {sell_quantity}! Skipping sell.")
+                                print(f"[{now}] ERROR: Invalid sell quantity {sell_quantity}! Skipping near-target exit.")
                             else:
                                 try:
-                                    print(f"\n[{now}] ⚠️  RULE 1 EMERGENCY EXIT ⚠️")
-                                    print(f"[{now}] Selling ALL {sell_quantity} contracts (bought at {fmt_cents(position.entry_price)})")
-                                    print(f"[{now}] PLACING EMERGENCY SELL ORDER: {position.side.upper()} @ {fmt_cents(current_price)} x {sell_quantity}")
+                                    print(
+                                        f"\n[{now}] NEAR-TARGET EXIT: spot BTC ${last_btc_spot_usd:,.2f} "
+                                        f"within ${BTC_TARGET_PROXIMITY_DOLLARS:.0f} of strike ${btc_target_usd:,.2f} "
+                                        f"(final {FINAL_PHASE_BTC_RULE_SECONDS // 60}m)"
+                                    )
+                                    print(
+                                        f"[{now}] PLACING SELL ORDER: {position.side.upper()} @ {fmt_cents(current_price)} x {sell_quantity}"
+                                    )
                                     order_response = await _to_thread(
                                         client.create_order,
                                         ticker=market_ticker,
@@ -1429,95 +1598,55 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                                     exit_order_id = order.get("order_id")
                                     pending_exit_order_id = exit_order_id
                                     pending_exit_price_cents = price_cents
-                                    pending_exit_reason = "RULE1"
-                                    pending_exit_time = datetime.now()
-                                    pending_exit_floor_price_cents = EXIT_LADDER_RULE1_FLOOR_CENTS
-                                    rule1_exit_triggered = True  # Set flag to prevent re-entry
-                                    print(f"Emergency exit order placed: {exit_order_id}")
-                                    print(f"[Rule 1] Re-entry disabled for this session")
-                                        
-                                except Exception as e:
-                                    print(f"[{now}] ERROR placing emergency exit order: {e}")
-                                    next_exit_attempt_time = datetime.now() + timedelta(seconds=10)
-
-                        # End-of-round exit: if we never hit Rule 1, try to exit before settlement.
-                        # Place a limit sell at the entry rule price (98¢) in the final 45 seconds.
-                        if (not rule1_triggered) and seconds_remaining <= 45:
-                            if datetime.now() < next_exit_attempt_time:
-                                continue
-
-                            price_cents = int(round(ENTRY_TRIGGER * 100))
-                            price_cents = max(1, min(99, price_cents))
-
-                            sell_quantity = position.quantity
-                            if sell_quantity <= 0:
-                                print(f"[{now}] ERROR: Invalid sell quantity {sell_quantity}! Skipping end-of-round exit.")
-                            else:
-                                try:
-                                    print(f"\n[{now}] END-OF-ROUND EXIT: Selling at entry price {fmt_cents(ENTRY_TRIGGER)}")
-                                    print(f"[{now}] Selling ALL {sell_quantity} contracts before close")
-                                    print(f"[{now}] PLACING END-OF-ROUND SELL ORDER: {position.side.upper()} @ {fmt_cents(ENTRY_TRIGGER)} x {sell_quantity}")
-                                    order_response = await _to_thread(
-                                        client.create_order,
-                                        ticker=market_ticker,
-                                        side=position.side,
-                                        action="sell",
-                                        count=sell_quantity,
-                                        yes_price=price_cents if position.side == "yes" else None,
-                                        no_price=price_cents if position.side == "no" else None,
-                                    )
-                                    order = order_response.get("order", {})
-                                    exit_order_id = order.get("order_id")
-                                    pending_exit_order_id = exit_order_id
-                                    pending_exit_price_cents = price_cents
-                                    pending_exit_reason = "TIME_EXIT"
-                                    pending_exit_time = datetime.now()
-                                    pending_exit_floor_price_cents = EXIT_LADDER_TIME_EXIT_FLOOR_CENTS
-                                    print(f"End-of-round sell order placed: {exit_order_id}")
-                                except Exception as e:
-                                    print(f"[{now}] ERROR placing end-of-round sell order: {e}")
-                                    next_exit_attempt_time = datetime.now() + timedelta(seconds=10)
-                            continue
-
-                        # Fixed exit at 65¢
-                        if current_price is not None and current_price <= EXIT_TRIGGER:
-                            if datetime.now() < next_exit_attempt_time:
-                                continue
-                            price_cents = int(round(current_price * 100))
-                            price_cents = max(1, min(99, price_cents))
-
-                            # CRITICAL: Ensure we sell the EXACT quantity we bought
-                            sell_quantity = position.quantity
-                            if sell_quantity <= 0:
-                                print(f"[{now}] ERROR: Invalid sell quantity {sell_quantity}! Skipping sell.")
-                            else:
-                                try:
-                                    print(f"\n[{now}] STOP LOSS TRIGGERED: Entry @ {fmt_cents(position.entry_price)} | Exit @ {fmt_cents(EXIT_TRIGGER)} | Current @ {fmt_cents(current_price)}")
-                                    print(f"[{now}] Selling ALL {sell_quantity} contracts (bought at {fmt_cents(position.entry_price)})")
-                                    print(f"[{now}] PLACING SELL ORDER: {position.side.upper()} @ {fmt_cents(current_price)} x {sell_quantity}")
-                                    order_response = await _to_thread(
-                                        client.create_order,
-                                        ticker=market_ticker,
-                                        side=position.side,
-                                        action="sell",
-                                        count=sell_quantity,
-                                        yes_price=price_cents if position.side == "yes" else None,
-                                        no_price=price_cents if position.side == "no" else None,
-                                    )
-                                    order = order_response.get("order", {})
-                                    exit_order_id = order.get("order_id")
-                                    pending_exit_order_id = exit_order_id
-                                    pending_exit_price_cents = price_cents
-                                    pending_exit_reason = "STOP"
+                                    pending_exit_reason = "NEAR_TARGET"
                                     pending_exit_time = datetime.now()
                                     pending_exit_floor_price_cents = EXIT_LADDER_STOP_FLOOR_CENTS
-                                    stop_loss_exit_triggered = True  # Prevent re-entry after stop loss
-                                    print(f"Sell order placed: {exit_order_id}")
-                                    print(f"[{now}] Confirmed: Selling {sell_quantity} contracts to close position")
+                                    stop_loss_exit_triggered = True
+                                    print(f"Near-target sell order placed: {exit_order_id}")
                                 except Exception as e:
-                                    print(f"[{now}] ERROR placing sell order: {e}")
+                                    print(f"[{now}] ERROR placing near-target sell order: {e}")
                                     next_exit_attempt_time = datetime.now() + timedelta(seconds=10)
-            
+                        elif current_price is not None and current_price <= EXIT_TRIGGER:
+                            if datetime.now() < next_exit_attempt_time:
+                                pass
+                            else:
+                                price_cents = int(round(current_price * 100))
+                                price_cents = max(1, min(99, price_cents))
+                                sell_quantity = position.quantity
+                                if sell_quantity <= 0:
+                                    print(f"[{now}] ERROR: Invalid sell quantity {sell_quantity}! Skipping stop exit.")
+                                else:
+                                    try:
+                                        print(
+                                            f"\n[{now}] STOP LOSS TRIGGERED: Entry @ {fmt_cents(position.entry_price)} "
+                                            f"| Trigger @ {fmt_cents(EXIT_TRIGGER)} | Current @ {fmt_cents(current_price)}"
+                                        )
+                                        print(f"[{now}] Selling ALL {sell_quantity} contracts")
+                                        print(
+                                            f"[{now}] PLACING SELL ORDER: {position.side.upper()} @ {fmt_cents(current_price)} x {sell_quantity}"
+                                        )
+                                        order_response = await _to_thread(
+                                            client.create_order,
+                                            ticker=market_ticker,
+                                            side=position.side,
+                                            action="sell",
+                                            count=sell_quantity,
+                                            yes_price=price_cents if position.side == "yes" else None,
+                                            no_price=price_cents if position.side == "no" else None,
+                                        )
+                                        order = order_response.get("order", {})
+                                        exit_order_id = order.get("order_id")
+                                        pending_exit_order_id = exit_order_id
+                                        pending_exit_price_cents = price_cents
+                                        pending_exit_reason = "STOP"
+                                        pending_exit_time = datetime.now()
+                                        pending_exit_floor_price_cents = EXIT_LADDER_STOP_FLOOR_CENTS
+                                        stop_loss_exit_triggered = True
+                                        print(f"Stop sell order placed: {exit_order_id}")
+                                    except Exception as e:
+                                        print(f"[{now}] ERROR placing stop sell order: {e}")
+                                        next_exit_attempt_time = datetime.now() + timedelta(seconds=10)
+
                     # Check if pending exit order has filled
                     if pending_exit_order_id and position is not None:
                         try:
@@ -1866,8 +1995,9 @@ async def main_loop():
         print("=" * 80)
         print("All session data logged successfully.")
         print(f"Current balance: {fmt_dollars(balance)}")
-        print("Searching for next active market...\n")
-        await asyncio.sleep(2)  # Brief pause before next market search
+        log_completed_daily_net_changes()
+        print("Waiting 60 seconds for balance/portfolio updates before next market...\n")
+        await asyncio.sleep(60)
 
 
 def main():
