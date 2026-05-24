@@ -28,11 +28,11 @@ if not API_KEY_ID or not PRIVATE_KEY_PATH or not BASE_URL:
     raise ValueError("Missing environment variables. Check your .env file.")
 
 # Trading parameters - SAFETY FIRST: 2% position sizing
-ENTRY_TRIGGER = 0.99  # Enter when ask >= 99 cents
-EXIT_TRIGGER = 0.40  # Stop: sell when held-side ask <= 40 cents
+ENTRY_TRIGGER = 0.995  # Enter when ask >= 99.5 cents
+EXIT_TRIGGER = 0.80  # Stop: sell when held-side ask <= 80 cents
 POSITION_SIZE_PCT = 0.40  # Use 40% of account balance
 TRADING_DELAY_MINUTES = 8  # Only trade when 8 minutes or less remain
-NO_ENTRY_FINAL_SECONDS = 100  # Don't place new entry orders in final 1:40
+NO_ENTRY_FINAL_SECONDS = 25  # Don't place new entry orders in final 25 seconds
 # Final 2 minutes: compare spot BTC to market strike; within $5 blocks new entries (flat) or triggers exit (position)
 FINAL_PHASE_BTC_RULE_SECONDS = 120
 BTC_TARGET_PROXIMITY_DOLLARS = 5.0
@@ -231,12 +231,13 @@ def log_completed_daily_net_changes():
             starting_balance = float(sessions[0].get("starting_balance", 0.0))
             ending_balance = float(sessions[-1].get("ending_balance", starting_balance))
             net_change = ending_balance - starting_balance
+            rounds_with_trades = sum(1 for session in sessions if session.get("trades"))
             rows_to_write.append([
                 session_date,
                 round(starting_balance, 2),
                 round(ending_balance, 2),
                 round(net_change, 2),
-                len(sessions),
+                rounds_with_trades,
                 datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             ])
 
@@ -386,7 +387,17 @@ class KalshiClient:
         response.raise_for_status()
         return response.json()
 
-    def create_order(self, ticker: str, side: str, action: str, count: int, yes_price: int = None, no_price: int = None) -> dict:
+    def create_order(
+        self,
+        ticker: str,
+        side: str,
+        action: str,
+        count: int,
+        yes_price: int = None,
+        no_price: int = None,
+        yes_price_dollars: str = None,
+        no_price_dollars: str = None,
+    ) -> dict:
         """
         Create a limit order.
         
@@ -397,6 +408,8 @@ class KalshiClient:
             count: Number of contracts (whole number)
             yes_price: YES price in cents (1-99), mutually exclusive with no_price
             no_price: NO price in cents (1-99), mutually exclusive with yes_price
+            yes_price_dollars: YES price as fixed-point dollars, e.g. "0.9950"
+            no_price_dollars: NO price as fixed-point dollars, e.g. "0.9950"
         """
         order_data = {
             "ticker": ticker,
@@ -406,12 +419,16 @@ class KalshiClient:
             "type": "limit",
         }
         
-        if yes_price is not None:
+        if yes_price_dollars is not None:
+            order_data["yes_price_dollars"] = yes_price_dollars
+        elif no_price_dollars is not None:
+            order_data["no_price_dollars"] = no_price_dollars
+        elif yes_price is not None:
             order_data["yes_price"] = yes_price
         elif no_price is not None:
             order_data["no_price"] = no_price
         else:
-            raise ValueError("Must provide either yes_price or no_price")
+            raise ValueError("Must provide either yes_price, no_price, yes_price_dollars, or no_price_dollars")
         
         response = self.post("/portfolio/orders", data=order_data, auth=True)
         response.raise_for_status()
@@ -903,7 +920,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
     print(f"Exit Rule: Near strike in final {FINAL_PHASE_BTC_RULE_SECONDS // 60}m (spot vs strike) -> sell; "
           f"else stop at {fmt_cents(EXIT_TRIGGER)}; else hold to settlement")
     print(f"Trading Delay: Only trade when <= {TRADING_DELAY_MINUTES} minutes remain")
-    print(f"No new entries: final {NO_ENTRY_FINAL_SECONDS // 60}:{NO_ENTRY_FINAL_SECONDS % 60:02d} before close")
+    print(f"No new entries in final {NO_ENTRY_FINAL_SECONDS} seconds")
     if btc_target_usd is not None:
         print(
             f"Final {FINAL_PHASE_BTC_RULE_SECONDS // 60}m BTC rule: spot within ${BTC_TARGET_PROXIMITY_DOLLARS:.0f} "
@@ -1485,7 +1502,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                             else:
                                 quantity = 0
                             if quantity > 0:
-                                yes_price_cents = int(ENTRY_TRIGGER * 100)
+                                yes_price_dollars = f"{ENTRY_TRIGGER:.4f}"
                                 try:
                                     print(f"[{now}] PLACING BUY ORDER: YES @ {fmt_cents(ENTRY_TRIGGER)} x {quantity} contracts")
                                     order_response = await _to_thread(
@@ -1494,7 +1511,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                                         side="yes",
                                         action="buy",
                                         count=quantity,
-                                        yes_price=yes_price_cents,
+                                        yes_price_dollars=yes_price_dollars,
                                     )
                                     order = order_response.get("order", {})
                                     pending_entry_order_id = order.get("order_id")
@@ -1503,7 +1520,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                                     pending_entry_time = datetime.now()
                                 except Exception as e:
                                     print(f"[{now}] ERROR placing buy order: {e}")
-                                    print(f"[{now}] Order params: ticker={market_ticker} side=yes action=buy count={quantity} yes_price={yes_price_cents}")
+                                    print(f"[{now}] Order params: ticker={market_ticker} side=yes action=buy count={quantity} yes_price_dollars={yes_price_dollars}")
                                     resp = getattr(e, "response", None)
                                     if resp is not None:
                                         try:
@@ -1526,7 +1543,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                             else:
                                 quantity = 0
                             if quantity > 0:
-                                no_price_cents = int(ENTRY_TRIGGER * 100)
+                                no_price_dollars = f"{ENTRY_TRIGGER:.4f}"
                                 try:
                                     print(f"[{now}] PLACING BUY ORDER: NO @ {fmt_cents(ENTRY_TRIGGER)} x {quantity} contracts")
                                     order_response = await _to_thread(
@@ -1535,7 +1552,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                                         side="no",
                                         action="buy",
                                         count=quantity,
-                                        no_price=no_price_cents,
+                                        no_price_dollars=no_price_dollars,
                                     )
                                     order = order_response.get("order", {})
                                     pending_entry_order_id = order.get("order_id")
@@ -1544,7 +1561,7 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                                     pending_entry_time = datetime.now()
                                 except Exception as e:
                                     print(f"[{now}] ERROR placing buy order: {e}")
-                                    print(f"[{now}] Order params: ticker={market_ticker} side=no action=buy count={quantity} no_price={no_price_cents}")
+                                    print(f"[{now}] Order params: ticker={market_ticker} side=no action=buy count={quantity} no_price_dollars={no_price_dollars}")
                                     resp = getattr(e, "response", None)
                                     if resp is not None:
                                         try:
