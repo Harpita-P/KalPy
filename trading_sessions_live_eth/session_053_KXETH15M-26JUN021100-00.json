@@ -1,0 +1,12 @@
+{
+  "session_number": 53,
+  "market_ticker": "KXETH15M-26JUN021100-00",
+  "start_time": "2026-06-02 10:46:08",
+  "end_time": "2026-06-02 11:03:29",
+  "starting_balance": 37.89,
+  "ending_balance": 37.89,
+  "session_pnl": 0.0,
+  "session_pnl_percent": 0.0,
+  "outcome": "No position at close",
+  "trades": []
+}

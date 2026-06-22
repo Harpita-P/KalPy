@@ -28,15 +28,22 @@ if not API_KEY_ID or not PRIVATE_KEY_PATH or not BASE_URL:
     raise ValueError("Missing environment variables. Check your .env file.")
 
 # Trading parameters - SAFETY FIRST: 2% position sizing
-ENTRY_TRIGGER = 0.995  # Enter when ask >= 99.5 cents
-EXIT_TRIGGER = 0.80  # Stop: sell when held-side ask <= 80 cents
-POSITION_SIZE_PCT = 0.40  # Use 40% of account balance
-TRADING_DELAY_MINUTES = 8  # Only trade when 8 minutes or less remain
+ENTRY_TRIGGER = 0.999  # Enter when ask >= 99.9 cents
+EXIT_TRIGGER = 0.30  # Stop: sell when held-side ask <= 30 cents
+POSITION_SIZE_PCT = 0.60  # Use 60% of account balance
+TRADING_DELAY_MINUTES = 2.333  # Only trade when 2 min 20 sec (2:20) or less remain
 NO_ENTRY_FINAL_SECONDS = 25  # Don't place new entry orders in final 25 seconds
 # Final 2 minutes: compare spot BTC to market strike; within $5 blocks new entries (flat) or triggers exit (position)
 FINAL_PHASE_BTC_RULE_SECONDS = 120
 BTC_TARGET_PROXIMITY_DOLLARS = 5.0
 BTC_SPOT_POLL_INTERVAL_SECONDS = 5
+VELOCITY_WINDOW_SECONDS = 60        # Look-back window for spot velocity measurement
+# 0.20% in 60s is calibrated from actual loss events:
+#   ETH Jun10: +0.26%/60s before bad NO entry (would have blocked it)
+#   BTC Jun7:  +0.24%/57s spike after NO entry (would have triggered exit)
+#   BTC Jun18: +0.33%/60s spike during position (would have triggered exit)
+# Normal BTC volatility is ~0.04-0.06%/min, so 0.20% gives 3-5x buffer vs noise.
+RAPID_MOVE_THRESHOLD_PCT = 0.20
 MINIMUM_ACCOUNT_BALANCE = 2.00  # Minimum balance required to continue trading
 PRINT_TICK_UPDATES = False
 ENTRY_ORDER_TIMEOUT_SECONDS = 60
@@ -69,13 +76,14 @@ CSV_HEADERS = [
 ]
 
 DAILY_NET_LOG_PATH = Path("csv_trading_logs/daily_net_changes.csv")
-DAILY_NET_START_DATE = "2026-05-20"
+DAILY_NET_START_DATE = "2026-05-28"
 DAILY_NET_HEADERS = [
     "date",
     "starting_balance",
     "ending_balance",
     "net_change",
     "number_rounds_traded",
+    "rounds_sold_after_buying",
     "logged_at",
 ]
 
@@ -162,6 +170,37 @@ def ensure_daily_net_csv_exists():
         with open(DAILY_NET_LOG_PATH, "w", newline="") as f:
             writer = csv.writer(f)
             writer.writerow(DAILY_NET_HEADERS)
+        return
+
+    try:
+        with open(DAILY_NET_LOG_PATH, "r", newline="") as f:
+            reader = csv.DictReader(f)
+            rows = list(reader)
+            fieldnames = reader.fieldnames or []
+
+        if fieldnames == DAILY_NET_HEADERS:
+            return
+
+        updated_fieldnames = list(fieldnames)
+        changed = False
+        for header in DAILY_NET_HEADERS:
+            if header not in updated_fieldnames:
+                insert_at = DAILY_NET_HEADERS.index(header)
+                updated_fieldnames.insert(min(insert_at, len(updated_fieldnames)), header)
+                changed = True
+
+        if not changed:
+            return
+
+        with open(DAILY_NET_LOG_PATH, "w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=updated_fieldnames)
+            writer.writeheader()
+            for row in rows:
+                for header in updated_fieldnames:
+                    row.setdefault(header, "")
+                writer.writerow(row)
+    except Exception as e:
+        print(f"WARNING: Could not migrate daily net-change CSV headers: {e}")
 
 
 def _logged_daily_net_dates() -> set[str]:
@@ -202,6 +241,26 @@ def _load_all_sessions() -> list[dict]:
         return []
 
 
+def _format_daily_sold_rounds(sessions: list[dict]) -> str:
+    sold_rounds = []
+    for session in sessions:
+        ticker = session.get("market_ticker", "")
+        for trade in session.get("trades") or []:
+            exit_order_id = trade.get("exit_order_id")
+            if not exit_order_id:
+                continue
+            side = str(trade.get("side", "")).upper()
+            exit_time = str(trade.get("exit_time", ""))
+            exit_time_only = exit_time.split()[-1] if exit_time else ""
+            exit_price = trade.get("exit_price")
+            if exit_price is None:
+                price_text = "N/A"
+            else:
+                price_text = f"{float(exit_price) * 100:.1f}c"
+            sold_rounds.append(f"{ticker} {side} sold {exit_time_only} @ {price_text}")
+    return "; ".join(sold_rounds)
+
+
 def log_completed_daily_net_changes():
     """Log completed midnight-to-midnight daily balance changes.
 
@@ -232,12 +291,14 @@ def log_completed_daily_net_changes():
             ending_balance = float(sessions[-1].get("ending_balance", starting_balance))
             net_change = ending_balance - starting_balance
             rounds_with_trades = sum(1 for session in sessions if session.get("trades"))
+            sold_rounds = _format_daily_sold_rounds(sessions)
             rows_to_write.append([
                 session_date,
                 round(starting_balance, 2),
                 round(ending_balance, 2),
                 round(net_change, 2),
                 rounds_with_trades,
+                sold_rounds,
                 datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             ])
 
@@ -249,11 +310,7 @@ def log_completed_daily_net_changes():
             writer.writerows(rows_to_write)
 
         for row in rows_to_write:
-            print(
-                f"Daily net-change logged for {row[0]}: "
-                f"{fmt_dollars(row[1])} -> {fmt_dollars(row[2])} "
-                f"({fmt_dollars(row[3])}), rounds={row[4]}"
-            )
+            pass  # daily net-change written to CSV silently
     except Exception as e:
         print(f"WARNING: Failed to log daily net-change summary: {e}")
 
@@ -399,40 +456,71 @@ class KalshiClient:
         no_price_dollars: str = None,
     ) -> dict:
         """
-        Create a limit order.
-        
-        Args:
-            ticker: Market ticker
-            side: "yes" or "no"
-            action: "buy" or "sell"
-            count: Number of contracts (whole number)
-            yes_price: YES price in cents (1-99), mutually exclusive with no_price
-            no_price: NO price in cents (1-99), mutually exclusive with yes_price
-            yes_price_dollars: YES price as fixed-point dollars, e.g. "0.9950"
-            no_price_dollars: NO price as fixed-point dollars, e.g. "0.9950"
+        Create a limit order via the V2 events endpoint.
+
+        Translates the legacy (side/action/yes_price/no_price) interface into
+        the V2 bid/ask + YES-price format, then normalises the flat V2 response
+        back to {"order": {"order_id": ..., "yes_price_dollars": ..., ...}} so
+        no callers need to change.
+
+        V2 book_side mapping:
+          buy  YES → bid  @ P_yes
+          sell YES → ask  @ P_yes
+          buy  NO  → ask  @ (1 - P_no)   (sell YES at 1-P_no = buy NO at P_no)
+          sell NO  → bid  @ (1 - P_no)   (buy  YES at 1-P_no = sell NO at P_no)
         """
+        # --- resolve YES price in fixed-point dollars ---
+        if yes_price_dollars is not None:
+            yes_fp = float(yes_price_dollars)
+        elif no_price_dollars is not None:
+            yes_fp = 1.0 - float(no_price_dollars)
+        elif yes_price is not None:
+            yes_fp = yes_price / 100.0
+        elif no_price is not None:
+            yes_fp = (100 - no_price) / 100.0
+        else:
+            raise ValueError("Must provide a price argument")
+
+        yes_fp = max(0.0001, min(0.9999, yes_fp))
+        price_str = f"{yes_fp:.4f}"
+
+        # --- map old side/action to V2 book_side ---
+        if action == "buy" and side == "yes":
+            book_side = "bid"
+        elif action == "sell" and side == "yes":
+            book_side = "ask"
+        elif action == "buy" and side == "no":
+            book_side = "ask"
+        elif action == "sell" and side == "no":
+            book_side = "bid"
+        else:
+            raise ValueError(f"Unsupported side/action: {side}/{action}")
+
         order_data = {
             "ticker": ticker,
-            "side": side,
-            "action": action,
-            "count": count,
-            "type": "limit",
+            "side": book_side,
+            "count": f"{int(count)}.00",
+            "price": price_str,
+            "time_in_force": "good_till_canceled",
+            "self_trade_prevention_type": "taker_at_cross",
         }
-        
-        if yes_price_dollars is not None:
-            order_data["yes_price_dollars"] = yes_price_dollars
-        elif no_price_dollars is not None:
-            order_data["no_price_dollars"] = no_price_dollars
-        elif yes_price is not None:
-            order_data["yes_price"] = yes_price
-        elif no_price is not None:
-            order_data["no_price"] = no_price
-        else:
-            raise ValueError("Must provide either yes_price, no_price, yes_price_dollars, or no_price_dollars")
-        
-        response = self.post("/portfolio/orders", data=order_data, auth=True)
+
+        response = self.post("/portfolio/events/orders", data=order_data, auth=True)
         response.raise_for_status()
-        return response.json()
+        raw = response.json()
+
+        # Normalise flat V2 response into legacy {"order": {...}} shape.
+        no_fp_str = f"{1.0 - yes_fp:.4f}"
+        return {
+            "order": {
+                "order_id": raw.get("order_id", ""),
+                "yes_price_dollars": price_str if side == "yes" else no_fp_str,
+                "no_price_dollars": no_fp_str if side == "no" else price_str,
+                "fill_count": raw.get("fill_count", "0.00"),
+                "remaining_count": raw.get("remaining_count", f"{int(count)}.00"),
+                "ts_ms": raw.get("ts_ms"),
+            }
+        }
 
     def cancel_order(self, order_id: str) -> dict:
         """Cancel an order by ID."""
@@ -657,7 +745,7 @@ def btc_strike_target_usd(market_info: dict) -> float | None:
 
 
 def fetch_btc_spot_usd_sync() -> float | None:
-    """Spot BTC/USD (public Coinbase quote; used only in final minutes of the round)."""
+    """Spot BTC/USD (public Coinbase quote)."""
     try:
         response = requests.get(
             "https://api.coinbase.com/v2/prices/BTC-USD/spot",
@@ -669,6 +757,26 @@ def fetch_btc_spot_usd_sync() -> float | None:
         return safe_float(amount)
     except Exception:
         return None
+
+
+def _spot_velocity_pct(history: list, window_seconds: float) -> float | None:
+    """% change of spot price over the last window_seconds.
+    Positive = rising, negative = falling. Returns None if insufficient data."""
+    if len(history) < 2:
+        return None
+    now_mono = time.monotonic()
+    cutoff = now_mono - window_seconds
+    oldest_in_window = None
+    for ts, price in history:
+        if ts >= cutoff:
+            oldest_in_window = (ts, price)
+            break
+    if oldest_in_window is None:
+        oldest_in_window = history[0]
+    latest = history[-1]
+    if oldest_in_window[1] <= 0:
+        return None
+    return (latest[1] - oldest_in_window[1]) / oldest_in_window[1] * 100.0
 
 
 
@@ -958,6 +1066,10 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
     stop_loss_exit_triggered = False  # No new entries after stop / near-target exit this session
     last_btc_spot_usd = None
     last_btc_spot_fetch_mono = 0.0
+    spot_history: list = []          # [(monotonic_time, price)] rolling 2-min window
+    spot_velocity: float | None = None
+    rising_rapidly: bool = False
+    falling_rapidly: bool = False
 
     # WebSocket reconnection loop
     max_retries = 5
@@ -1177,13 +1289,21 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                     seconds_remaining = (close_time - current_time).total_seconds()
                     in_final_two_min = 0 < seconds_remaining <= FINAL_PHASE_BTC_RULE_SECONDS
 
-                    if in_final_two_min and btc_target_usd is not None:
-                        mono = time.monotonic()
-                        if mono - last_btc_spot_fetch_mono >= BTC_SPOT_POLL_INTERVAL_SECONDS:
-                            last_btc_spot_fetch_mono = mono
-                            fetched = await asyncio.to_thread(fetch_btc_spot_usd_sync)
-                            if fetched is not None:
-                                last_btc_spot_usd = fetched
+                    # Always poll BTC spot (needed for velocity check and final-2m rule).
+                    mono = time.monotonic()
+                    if mono - last_btc_spot_fetch_mono >= BTC_SPOT_POLL_INTERVAL_SECONDS:
+                        last_btc_spot_fetch_mono = mono
+                        fetched = await asyncio.to_thread(fetch_btc_spot_usd_sync)
+                        if fetched is not None:
+                            last_btc_spot_usd = fetched
+                            spot_history.append((mono, fetched))
+                            keep_cutoff = mono - 120.0
+                            while spot_history and spot_history[0][0] < keep_cutoff:
+                                spot_history.pop(0)
+                    # Recompute velocity on every tick (uses cached history).
+                    spot_velocity = _spot_velocity_pct(spot_history, VELOCITY_WINDOW_SECONDS)
+                    rising_rapidly = spot_velocity is not None and spot_velocity >= RAPID_MOVE_THRESHOLD_PCT
+                    falling_rapidly = spot_velocity is not None and spot_velocity <= -RAPID_MOVE_THRESHOLD_PCT
 
                     near_target_band = (
                         in_final_two_min
@@ -1493,6 +1613,14 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                             continue
                         if datetime.now() < next_entry_attempt_time:
                             continue
+                        if yes_ask_f is not None and yes_ask_f >= ENTRY_TRIGGER and falling_rapidly:
+                            vel_str = f"{spot_velocity:+.2f}%" if spot_velocity is not None else "?"
+                            print(f"[{now}] VELOCITY BLOCK (YES entry): BTC falling rapidly ({vel_str} in {VELOCITY_WINDOW_SECONDS}s) – skipping")
+                            continue
+                        if no_ask is not None and no_ask >= ENTRY_TRIGGER and rising_rapidly:
+                            vel_str = f"{spot_velocity:+.2f}%" if spot_velocity is not None else "?"
+                            print(f"[{now}] VELOCITY BLOCK (NO entry): BTC rising rapidly ({vel_str} in {VELOCITY_WINDOW_SECONDS}s) – skipping")
+                            continue
                         if yes_ask_f is not None and yes_ask_f >= ENTRY_TRIGGER:
                             position_value_dollars = current_balance * POSITION_SIZE_PCT
                             desired_qty = int(position_value_dollars / ENTRY_TRIGGER)
@@ -1518,6 +1646,8 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                                     pending_entry_side = "yes"
                                     pending_entry_quantity = quantity
                                     pending_entry_time = datetime.now()
+                                    confirmed_price = order.get("yes_price_dollars") or order.get("yes_price")
+                                    print(f"[{now}] ORDER CONFIRMED by Kalshi: yes_price={confirmed_price} | order_id={pending_entry_order_id}")
                                 except Exception as e:
                                     print(f"[{now}] ERROR placing buy order: {e}")
                                     print(f"[{now}] Order params: ticker={market_ticker} side=yes action=buy count={quantity} yes_price_dollars={yes_price_dollars}")
@@ -1559,6 +1689,8 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                                     pending_entry_side = "no"
                                     pending_entry_quantity = quantity
                                     pending_entry_time = datetime.now()
+                                    confirmed_price = order.get("no_price_dollars") or order.get("no_price")
+                                    print(f"[{now}] ORDER CONFIRMED by Kalshi: no_price={confirmed_price} | order_id={pending_entry_order_id}")
                                 except Exception as e:
                                     print(f"[{now}] ERROR placing buy order: {e}")
                                     print(f"[{now}] Order params: ticker={market_ticker} side=no action=buy count={quantity} no_price_dollars={no_price_dollars}")
@@ -1582,7 +1714,52 @@ async def run_live_trading(client: KalshiClient, market_ticker: str, initial_bal
                         else:
                             current_price = no_ask
 
-                        if (
+                        rapid_move_exit = (
+                            current_price is not None
+                            and datetime.now() >= next_exit_attempt_time
+                            and (
+                                (position.side == "no" and rising_rapidly)
+                                or (position.side == "yes" and falling_rapidly)
+                            )
+                        )
+                        if rapid_move_exit:
+                            vel_str = f"{spot_velocity:+.2f}%" if spot_velocity is not None else "?"
+                            price_cents = int(round(current_price * 100))
+                            price_cents = max(1, min(99, price_cents))
+                            sell_quantity = position.quantity
+                            if sell_quantity <= 0:
+                                print(f"[{now}] ERROR: Invalid sell quantity {sell_quantity}! Skipping rapid-move exit.")
+                            else:
+                                try:
+                                    direction = "rising" if rising_rapidly else "falling"
+                                    print(
+                                        f"\n[{now}] RAPID MOVE EXIT: BTC {direction} rapidly "
+                                        f"({vel_str} in {VELOCITY_WINDOW_SECONDS}s) "
+                                        f"| holding {position.side.upper()} @ {fmt_cents(current_price)}"
+                                    )
+                                    print(f"[{now}] PLACING SELL ORDER: {position.side.upper()} @ {fmt_cents(current_price)} x {sell_quantity}")
+                                    order_response = await _to_thread(
+                                        client.create_order,
+                                        ticker=market_ticker,
+                                        side=position.side,
+                                        action="sell",
+                                        count=sell_quantity,
+                                        yes_price=price_cents if position.side == "yes" else None,
+                                        no_price=price_cents if position.side == "no" else None,
+                                    )
+                                    order = order_response.get("order", {})
+                                    exit_order_id = order.get("order_id")
+                                    pending_exit_order_id = exit_order_id
+                                    pending_exit_price_cents = price_cents
+                                    pending_exit_reason = "RAPID_MOVE"
+                                    pending_exit_time = datetime.now()
+                                    pending_exit_floor_price_cents = EXIT_LADDER_STOP_FLOOR_CENTS
+                                    stop_loss_exit_triggered = True
+                                    print(f"Rapid-move sell order placed: {exit_order_id}")
+                                except Exception as e:
+                                    print(f"[{now}] ERROR placing rapid-move sell order: {e}")
+                                    next_exit_attempt_time = datetime.now() + timedelta(seconds=10)
+                        elif (
                             near_target_band
                             and current_price is not None
                             and datetime.now() >= next_exit_attempt_time

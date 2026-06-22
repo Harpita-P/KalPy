@@ -1,0 +1,25 @@
+{
+  "session_number": 55,
+  "market_ticker": "KXBTC15M-26MAY290700-00",
+  "start_time": "2026-05-29 06:46:02",
+  "end_time": "2026-05-29 07:00:00",
+  "starting_balance": 20.62,
+  "ending_balance": 20.66,
+  "session_pnl": 0.04,
+  "session_pnl_percent": 0.19,
+  "outcome": "Held YES to close - WON",
+  "trades": [
+    {
+      "side": "yes",
+      "entry_price": 0.995,
+      "entry_time": "2026-05-29 06:58:27",
+      "quantity": 8,
+      "entry_order_id": "bd5409ff-a5b4-43d4-a42c-f973b5c929fd",
+      "exit_price": 1.0,
+      "exit_time": "2026-05-29 07:00:00",
+      "exit_order_id": null,
+      "pnl": 0.04,
+      "status": "CLOSED"
+    }
+  ]
+}

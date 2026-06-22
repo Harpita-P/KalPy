@@ -1,0 +1,12 @@
+{
+  "session_number": 75,
+  "market_ticker": "KXETH15M-26JUN051045-45",
+  "start_time": "2026-06-05 10:31:08",
+  "end_time": "2026-06-05 10:44:57",
+  "starting_balance": 41.81,
+  "ending_balance": 25.89,
+  "session_pnl": -15.92,
+  "session_pnl_percent": -38.08,
+  "outcome": "Market closed - result unavailable (position unresolved)",
+  "trades": []
+}

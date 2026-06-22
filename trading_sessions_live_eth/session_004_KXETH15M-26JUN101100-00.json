@@ -1,0 +1,25 @@
+{
+  "session_number": 4,
+  "market_ticker": "KXETH15M-26JUN101100-00",
+  "start_time": "2026-06-10 10:46:13",
+  "end_time": "2026-06-10 10:59:59",
+  "starting_balance": 26.34,
+  "ending_balance": 20.97,
+  "session_pnl": -5.37,
+  "session_pnl_percent": -20.39,
+  "outcome": "No position at close",
+  "trades": [
+    {
+      "side": "no",
+      "entry_price": 0.997,
+      "entry_time": "2026-06-10 10:59:07",
+      "quantity": 10,
+      "entry_order_id": "82a4d7c4-0fb6-47a8-8480-0762154d459d",
+      "exit_price": 0.46,
+      "exit_time": "2026-06-10 10:59:42",
+      "exit_order_id": "4fb9c93d-9a55-4dd5-bef1-600e70e5022d",
+      "pnl": -5.37,
+      "status": "CLOSED"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "session_number": 9,
+  "market_ticker": "KXBTC15M-26JUN032045-45",
+  "start_time": "2026-06-03 20:31:14",
+  "end_time": "2026-06-03 20:44:59",
+  "starting_balance": 39.14,
+  "ending_balance": 39.14,
+  "session_pnl": 0.0,
+  "session_pnl_percent": 0.0,
+  "outcome": "No position at close",
+  "trades": []
+}
