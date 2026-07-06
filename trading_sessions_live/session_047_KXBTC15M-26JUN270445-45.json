@@ -1,0 +1,12 @@
+{
+  "session_number": 47,
+  "market_ticker": "KXBTC15M-26JUN270445-45",
+  "start_time": "2026-06-27 04:31:14",
+  "end_time": "2026-06-27 04:45:00",
+  "starting_balance": 14.63,
+  "ending_balance": 6.64,
+  "session_pnl": -7.99,
+  "session_pnl_percent": -54.63,
+  "outcome": "Market closed - result unavailable (position unresolved)",
+  "trades": []
+}
